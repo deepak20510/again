@@ -1,0 +1,138 @@
+// Dashboard configuration for different user types
+// Easy to add, remove, or modify features
+
+export const DASHBOARD_CONFIG = {
+  student: {
+    navbar: {
+      navItems: [
+        { id: "connection", label: "Connection", icon: "Users" },
+        { id: "for-you", label: "For You", icon: "Briefcase" },
+        { id: "messaging", label: "Messaging", icon: "MessageSquare" },
+        { id: "notifications", label: "Notifications", icon: "Bell" },
+      ],
+    },
+    leftSidebar: {
+      profile: {
+        name: "Deepak Mahato",
+        role: "Computer Science Student",
+        profileViewers: 30,
+        avatar: "https://i.pravatar.cc/100",
+      },
+      menuItems: [
+        { id: "saved-courses", label: "Saved Courses", icon: "BookOpen" },
+        { id: "groups", label: "Groups", icon: "Users" },
+        { id: "events", label: "Events", icon: "Calendar" },
+        { id: "certificates", label: "Certificates", icon: "Award" },
+      ],
+    },
+    feedSection: {
+      placeholder: "Start a post...",
+      postTypes: ["text", "link", "image"],
+    },
+    rightSidebar: {
+      title: "Tutroid Trainers Available",
+      items: [
+        "🔥 AI Skills in demand",
+        "📚 New React Courses Released",
+        "🚀 Startup Hiring Trends",
+        "💼 Remote Jobs Rising",
+      ],
+    },
+  },
+  trainer: {
+    navbar: {
+      navItems: [
+        { id: "my-courses", label: "My Courses", icon: "BookOpen" },
+        { id: "students", label: "Students", icon: "Users" },
+        { id: "messaging", label: "Messaging", icon: "MessageSquare" },
+        { id: "earnings", label: "Earnings", icon: "DollarSign" },
+        { id: "notifications", label: "Notifications", icon: "Bell" },
+      ],
+    },
+    leftSidebar: {
+      profile: {
+        name: "John Trainer",
+        role: "JavaScript Expert Trainer",
+        studentsCount: 250,
+        avatar: "https://i.pravatar.cc/120",
+      },
+      menuItems: [
+        { id: "my-courses", label: "My Courses", icon: "BookOpen" },
+        { id: "students", label: "My Students", icon: "Users" },
+        { id: "earnings", label: "Earnings", icon: "DollarSign" },
+        { id: "reviews", label: "Reviews", icon: "Star" },
+        { id: "analytics", label: "Analytics", icon: "BarChart3" },
+      ],
+    },
+    feedSection: {
+      placeholder:
+        "Share your teaching experience or create a course update...",
+      postTypes: ["text", "link", "image", "course"],
+    },
+    rightSidebar: {
+      title: "Trainer Insights",
+      items: [
+        "📈 Your avg rating: 4.8/5",
+        "👥 50 new student enrollments",
+        "💰 +$1,200 earnings this month",
+        "🎯 Course completion rate: 92%",
+      ],
+    },
+  },
+  institute: {
+    navbar: {
+      navItems: [
+        { id: "hire-trainers", label: "Hire Trainers", icon: "UserPlus" },
+        { id: "my-trainers", label: "My Trainers", icon: "Users" },
+        { id: "analytics", label: "Analytics", icon: "BarChart3" },
+        { id: "messaging", label: "Messaging", icon: "MessageSquare" },
+        { id: "notifications", label: "Notifications", icon: "Bell" },
+      ],
+    },
+    leftSidebar: {
+      profile: {
+        name: "Tech Academy Institute",
+        role: "Educational Institution",
+        trainersCount: 45,
+        studentsCount: 1200,
+        avatar: "https://i.pravatar.cc/130",
+      },
+      menuItems: [
+        { id: "find-trainers", label: "Find Trainers", icon: "Search" },
+        { id: "hired-trainers", label: "Hired Trainers", icon: "Users" },
+        { id: "post-job", label: "Post Training Job", icon: "Briefcase" },
+        { id: "performance", label: "Performance", icon: "TrendingUp" },
+        { id: "payments", label: "Payments", icon: "CreditCard" },
+      ],
+    },
+    feedSection: {
+      placeholder: "Post about training needs or institute updates...",
+      postTypes: ["text", "link", "image", "job"],
+    },
+    rightSidebar: {
+      title: "Institute Insights",
+      items: [
+        "🏢 5 new trainers applied today",
+        "📊 Avg trainer rating: 4.6/5",
+        "🎯 89% student satisfaction",
+        "💼 12 active training programs",
+      ],
+    },
+  },
+};
+
+// Feature flags - easily enable/disable features
+export const FEATURE_FLAGS = {
+  enableAnalytics: true,
+  enableEarnings: true,
+  enableCourseCreation: true,
+  enableStudentTracking: true,
+  enableAdvancedFilters: true,
+};
+
+// User types enum
+export const USER_TYPES = {
+  STUDENT: "student",
+  TRAINER: "trainer",
+  INSTITUTE: "institute",
+};

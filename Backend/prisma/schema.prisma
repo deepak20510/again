@@ -1,0 +1,299 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TRAINER
+  INSTITUTION
+  STUDENT
+  ADMIN
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+enum RequestInitiator {
+  TRAINER
+  INSTITUTION
+}
+
+enum ReviewTargetType {
+  TRAINER
+  INSTITUTION
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportTargetType {
+  TRAINER
+  MATERIAL
+  REVIEW
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  role      Role
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+
+  trainerProfile     TrainerProfile?
+  institutionProfile InstitutionProfile?
+  reviews            Review[]
+  reports            Report[]
+  auditLogs          AuditLog[]
+  posts              Post[]
+  postLikes          PostLike[]
+}
+
+model TrainerProfile {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  bio               String?
+  location          String?
+  experience        Int
+  skills            String[]
+  rating            Float     @default(0)
+  verified          Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  completedRequests Int       @default(0)
+  completionRate    Float     @default(0.0)
+  responseTime      Int       @default(0) // in hours
+  reputationScore   Float     @default(0.0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  user            User             @relation(fields: [userId], references: [id])
+  materials       Material[]
+  requests        Request[]
+  reviews         Review[]
+  badges          Badge[]
+  materialRatings MaterialRating[]
+  reports         Report[]
+
+  @@index([location])
+  @@index([experience])
+  @@index([rating])
+  @@index([reputationScore])
+  @@index([completedRequests])
+}
+
+model InstitutionProfile {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  name      String
+  location  String
+  rating    Float     @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user     User      @relation(fields: [userId], references: [id])
+  requests Request[]
+  reviews  Review[]
+  reports  Report[]
+
+  @@index([location])
+  @@index([rating])
+}
+
+model Material {
+  id        String    @id @default(uuid())
+  title     String
+  fileUrl   String
+  trainerId String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  trainer         TrainerProfile   @relation(fields: [trainerId], references: [id])
+  materialRatings MaterialRating[]
+  reports         Report[]
+
+  @@index([trainerId])
+  @@index([isActive])
+}
+
+model Request {
+  id            String           @id @default(uuid())
+  trainerId     String
+  institutionId String
+  initiatedBy   RequestInitiator
+  status        RequestStatus    @default(PENDING)
+
+  trainerMarkedComplete     Boolean @default(false)
+  institutionMarkedComplete Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trainer     TrainerProfile     @relation(fields: [trainerId], references: [id])
+  institution InstitutionProfile @relation(fields: [institutionId], references: [id])
+  reviews     Review[]
+
+  @@unique([trainerId, institutionId])
+  @@index([trainerId])
+  @@index([institutionId])
+  @@index([status])
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  rating     Int
+  comment    String?
+  requestId  String
+  reviewerId String
+  createdAt  DateTime @default(now())
+
+  trainerProfileId     String?
+  institutionProfileId String?
+
+  request  Request @relation(fields: [requestId], references: [id])
+  reviewer User    @relation(fields: [reviewerId], references: [id])
+
+  trainerProfile     TrainerProfile?     @relation(fields: [trainerProfileId], references: [id])
+  institutionProfile InstitutionProfile? @relation(fields: [institutionProfileId], references: [id])
+
+  @@unique([requestId, reviewerId])
+  @@index([trainerProfileId])
+  @@index([institutionProfileId])
+}
+
+model Badge {
+  id        String   @id @default(uuid())
+  name      String
+  icon      String
+  criteria  String
+  trainerId String
+  createdAt DateTime @default(now())
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id])
+
+  @@unique([trainerId, name])
+}
+
+model MaterialRating {
+  id         String   @id @default(uuid())
+  materialId String
+  studentId  String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  material         Material        @relation(fields: [materialId], references: [id])
+  trainerProfile   TrainerProfile? @relation(fields: [trainerProfileId], references: [id])
+  trainerProfileId String?
+
+  @@unique([materialId, studentId])
+  @@index([materialId])
+  @@index([studentId])
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  reporterId String
+  targetId   String
+  targetType ReportTargetType
+  reason     String
+  status     ReportStatus     @default(PENDING)
+  details    String?
+  createdAt  DateTime         @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?
+
+  reporter             User                @relation(fields: [reporterId], references: [id])
+  trainerProfile       TrainerProfile?     @relation(fields: [trainerProfileId], references: [id])
+  trainerProfileId     String?
+  institutionProfile   InstitutionProfile? @relation(fields: [institutionProfileId], references: [id])
+  institutionProfileId String?
+  material             Material?           @relation(fields: [materialId], references: [id])
+  materialId           String?
+
+  @@index([reporterId])
+  @@index([targetId])
+  @@index([targetType])
+  @@index([status])
+}
+
+model Post {
+  id        String    @id @default(uuid())
+  content   String
+  type      String    @default("text")
+  imageUrl  String?
+  videoUrl  String?
+  tags      String[]
+  likes     Int       @default(0)
+  comments  Int       @default(0)
+  shares    Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id])
+  postLikes PostLike[]
+
+  @@index([authorId])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  resource  String
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
