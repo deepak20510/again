@@ -50,7 +50,19 @@ export const getPostsService = async (filters = {}) => {
         select: {
           id: true,
           email: true,
+          firstName: true,
+          lastName: true,
           role: true,
+          trainerProfile: {
+            select: {
+              bio: true,
+            },
+          },
+          institutionProfile: {
+            select: {
+              name: true,
+            },
+          },
         },
       },
     },
@@ -87,6 +99,8 @@ export const getPostByIdService = async (postId) => {
         select: {
           id: true,
           email: true,
+          firstName: true,
+          lastName: true,
           role: true,
           trainerProfile: {
             select: {

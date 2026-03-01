@@ -67,7 +67,7 @@ export default function PostCard({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors">
-                  {post.author?.name || "Anonymous User"}
+                  {post.author?.firstName || post.author?.institutionProfile?.name || post.author?.email?.split('@')[0] || "Anonymous User"}
                 </h3>
                 {post.author?.headline && (
                   <span className="text-gray-500 text-sm">•</span>
