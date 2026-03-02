@@ -1,12 +1,15 @@
 import { useState, useRef } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { X, Camera, Upload, User, Briefcase, MapPin, GraduationCap, Building2 } from "lucide-react";
+import ApiService from "../../services/api";
 
 export default function EditProfileModal({ isOpen, onClose, userType, profileData, onSave }) {
   const { theme } = useTheme();
   const [formData, setFormData] = useState(profileData);
   const [profilePreview, setProfilePreview] = useState(profileData.avatar || null);
   const [coverPreview, setCoverPreview] = useState(profileData.coverImage || null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const profileInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
@@ -14,6 +17,7 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setError(null);
   };
 
   const handleFileChange = (e, type) => {
@@ -33,9 +37,50 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
     }
   };
 
-  const handleSave = () => {
-    onSave(formData);
-    onClose();
+  const handleSave = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Prepare data for API call
+      const updateData = {
+        name: formData.name,
+        headline: formData.headline,
+        location: formData.location,
+        avatar: formData.avatar,
+        skills: formData.skills || [],
+      };
+
+      // Call API to save profile
+      const response = await ApiService.updateTrainerProfile(updateData);
+
+      if (response.success) {
+        // Pass back the saved data along with the form data
+        onSave({
+          ...formData,
+          // Override with API response data if available
+          ...(response.data?.user && {
+            name: response.data.user.firstName 
+              ? `${response.data.user.firstName} ${response.data.user.lastName || ""}`.trim()
+              : formData.name,
+            avatar: response.data.user.profilePicture || formData.avatar,
+          }),
+          ...(response.data?.profile && {
+            headline: response.data.profile.bio || formData.headline,
+            location: response.data.profile.location || formData.location,
+            skills: response.data.profile.skills || formData.skills,
+          }),
+        });
+        onClose();
+      } else {
+        setError(response.message || "Failed to save profile");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to save profile. Please try again.");
+      console.error("Profile save error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isStudent = userType === "student";
@@ -326,20 +371,36 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
 
         {/* Footer */}
         <div
-          className={`sticky bottom-0 z-10 flex items-center justify-end gap-3 p-6 border-t ${theme.divider} ${theme.cardBg}`}
+          className={`sticky bottom-0 z-10 flex flex-col gap-3 p-6 border-t ${theme.divider} ${theme.cardBg}`}
         >
-          <button
-            onClick={onClose}
-            className={`px-6 py-2.5 rounded-xl font-medium ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300`}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className={`px-6 py-2.5 rounded-xl font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300`}
-          >
-            Save Changes
-          </button>
+          {error && (
+            <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/50 text-red-500 text-sm">
+              {error}
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className={`px-6 py-2.5 rounded-xl font-medium ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className={`px-6 py-2.5 rounded-xl font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

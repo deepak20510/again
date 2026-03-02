@@ -15,12 +15,16 @@ import {
   ThumbsUp,
   User,
   FileText,
+  Image,
+  Link2,
+  Video,
 } from "lucide-react";
 import PostCard from "./PostCard";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
   const { user } = useAuth();
+  const { theme } = useTheme();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -332,32 +336,38 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
     try {
       const isLiked = likedPosts.has(postId);
 
-      // Update UI optimistically
+      // Optimistic UI update
       setLikedPosts((prev) => {
         const newSet = new Set(prev);
-        if (isLiked) {
-          newSet.delete(postId);
-        } else {
-          newSet.add(postId);
-        }
+        if (isLiked) newSet.delete(postId);
+        else newSet.add(postId);
         return newSet;
       });
 
       setPosts((prev) =>
         prev.map((post) =>
           post.id === postId
-            ? {
-                ...post,
-                likes: isLiked ? (post.likes || 0) - 1 : (post.likes || 0) + 1,
-              }
+            ? { ...post, likes: isLiked ? Math.max(0, (post.likes || 0) - 1) : (post.likes || 0) + 1 }
             : post,
         ),
       );
 
-      // API call would go here
-      // await ApiService.toggleLike(postId);
+      // Real API call
+      if (isLiked) {
+        await ApiService.unlikePost(postId);
+      } else {
+        await ApiService.likePost(postId);
+      }
     } catch (error) {
-      console.error("Failed to like post:", error);
+      console.error("Failed to toggle like:", error);
+      // Revert optimistic update on error
+      setLikedPosts((prev) => {
+        const newSet = new Set(prev);
+        const isLiked = newSet.has(postId);
+        if (isLiked) newSet.delete(postId);
+        else newSet.add(postId);
+        return newSet;
+      });
     }
   };
 
@@ -403,10 +413,10 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
         prev.map((post) =>
           post.id === postId
             ? {
-                ...post,
-                comments: [...(post.comments || []), newComment],
-                commentCount: (post.commentCount || 0) + 1,
-              }
+              ...post,
+              comments: [...(post.comments || []), newComment],
+              commentCount: (post.commentCount || 0) + 1,
+            }
             : post,
         ),
       );
@@ -436,42 +446,88 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-10">
-      {/* ================= HEADER ================= */}
-      <div className="flex justify-between items-center">
-        <div className="text-xs font-bold flex items-center">
-          <span className="mr-2">Sort by</span>
+    <div className="space-y-4 max-w-2xl mx-auto pb-10">
+      {/* ================= CREATE POST BAR ================= */}
+      {user && ["TRAINER", "INSTITUTION"].includes(user?.role) && (
+        <div className={`${theme.cardBg} rounded-xl shadow-sm border ${theme.cardBorder} p-4`}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">
+                {(user?.name || user?.firstName || "U").charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className={`flex-1 text-left px-4 py-2.5 ${theme.inputBg} border ${theme.inputBorder} rounded-full text-sm ${theme.textMuted} hover:border-blue-400 transition-all`}
+            >
+              {DASHBOARD_CONFIG[userType]?.feedSection?.placeholder || "Share something..."}
+            </button>
+          </div>
+          <div className={`flex gap-1 mt-3 pt-3 border-t ${theme.divider}`}>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all`}
+            >
+              <Image size={14} className="text-emerald-500" />
+              Photo
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all`}
+            >
+              <FileText size={14} className="text-red-500" />
+              Document
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all`}
+            >
+              <Video size={14} className="text-blue-500" />
+              Video
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ================= SORT ================= */}
+      <div className={`flex justify-between items-center px-1`}>
+        <div className={`flex items-center gap-2 text-xs font-semibold ${theme.textSecondary}`}>
+          <span>Sort by</span>
           <select
             name="sortType"
             value={sortType}
             onChange={(e) => setSortType(e.target.value)}
-            className="bg-transparent cursor-pointer text-sm"
+            className={`${theme.inputBg} border ${theme.inputBorder} rounded-lg px-2 py-1 text-xs ${theme.inputText} outline-none cursor-pointer`}
           >
             <option value="recent">Recent</option>
             <option value="top">Most Popular</option>
           </select>
         </div>
-
-        {user && ["TRAINER", "INSTITUTION"].includes(user?.role) && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={16} />
-            Create Post
-          </button>
-        )}
       </div>
 
       {/* ================= FEED ================= */}
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="animate-spin h-8 w-8 border-b-2 border-blue-500 rounded-full" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} p-4 animate-pulse`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-11 h-11 rounded-full ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"}`}></div>
+                <div className="space-y-2">
+                  <div className={`h-3 rounded ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"} w-32`}></div>
+                  <div className={`h-2 rounded ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"} w-20`}></div>
+                </div>
+              </div>
+              <div className={`h-3 rounded ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"} mb-2`}></div>
+              <div className={`h-3 rounded ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"} w-3/4`}></div>
+            </div>
+          ))}
         </div>
       ) : sortedPosts.length === 0 ? (
-        <div className="text-center py-10 text-gray-400">
-          No posts available.
+        <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} p-12 text-center`}>
+          <div className="text-4xl mb-3">📬</div>
+          <p className={`font-semibold ${theme.textPrimary} mb-1`}>No posts yet</p>
+          <p className={`text-sm ${theme.textMuted}`}>Be the first to share something!</p>
         </div>
       ) : (
         sortedPosts.map((post) => (
@@ -503,10 +559,11 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
       {/* ================= CREATE POST MODAL ================= */}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-start pt-20 z-50">
-          <div className="bg-white w-full max-w-2xl rounded-xl shadow-lg">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="font-bold text-lg">Create Post</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-start pt-16 z-50 px-4">
+          <div className={`${theme.cardBg} w-full max-w-xl rounded-2xl shadow-2xl border ${theme.cardBorder} overflow-hidden`}>
+            {/* Modal Header */}
+            <div className={`flex justify-between items-center px-5 py-4 border-b ${theme.divider}`}>
+              <h3 className={`font-bold text-lg ${theme.textPrimary}`}>Create Post</h3>
               <button
                 onClick={() => {
                   setIsModalOpen(false);
@@ -514,170 +571,118 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
                   setSelectedImage(null);
                   setImagePreview(null);
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className={`p-2 rounded-full ${theme.hoverBg} ${theme.textMuted} ${theme.hoverText} transition-colors`}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* User Info */}
-            <div className="flex items-center gap-3 p-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                {user?.profilePicture ? (
-                  <img
-                    src={user.profilePicture}
-                    alt={user.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="w-6 h-6 text-white" />
-                )}
+            <div className="flex items-center gap-3 px-5 py-3">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
+                <span className="text-white font-bold text-sm">
+                  {(user?.name || user?.firstName || "U").charAt(0).toUpperCase()}
+                </span>
               </div>
               <div>
-                <div className="font-semibold text-gray-900">
-                  {user?.name || "Anonymous User"}
+                <div className={`font-semibold text-sm ${theme.textPrimary}`}>
+                  {user?.name || user?.firstName || "Anonymous User"}
                 </div>
-                <div className="text-sm text-gray-500">Post to anyone</div>
+                <div className={`text-xs ${theme.textMuted}`}>Post to anyone • 🌐 Public</div>
               </div>
             </div>
 
             {/* Post Content */}
-            <div className="px-4 pb-4">
+            <div className="px-5 pb-3">
               <textarea
                 name="postText"
                 value={postText}
                 onChange={(e) => setPostText(e.target.value)}
                 rows="4"
-                className="w-full border-none outline-none resize-none text-gray-700 placeholder-gray-400 text-lg"
+                className={`w-full border-none outline-none resize-none text-base ${theme.inputText} ${theme.inputPlaceholder} bg-transparent placeholder:${theme.textMuted}`}
                 placeholder="What do you want to talk about?"
               />
 
               {/* Image / PDF Preview */}
               {imagePreview && (
-                <div className="mt-4 relative">
+                <div className="mt-3 relative">
                   {imagePreview === "pdf" && selectedImage ? (
-                    <div className="flex items-center gap-3 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                      <FileText className="w-12 h-12 text-red-500 flex-shrink-0" />
+                    <div className={`flex items-center gap-3 p-4 ${theme.hoverBg} rounded-xl border ${theme.cardBorder}`}>
+                      <FileText className="w-10 h-10 text-red-500 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
+                        <p className={`font-medium text-sm ${theme.textPrimary} truncate`}>
                           {selectedImage.name}
                         </p>
-                        <p className="text-sm text-gray-500">PDF document</p>
+                        <p className={`text-xs ${theme.textMuted}`}>PDF document</p>
                       </div>
-                      <button
-                        onClick={removeImage}
-                        className="text-gray-500 hover:text-red-600 p-1"
-                      >
-                        <X size={20} />
+                      <button onClick={removeImage} className={`${theme.textMuted} hover:text-red-500 p-1`}>
+                        <X size={18} />
                       </button>
                     </div>
                   ) : (
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full rounded-lg max-h-64 object-cover"
-                    />
-                  )}
-                  {imagePreview !== "pdf" && (
-                    <button
-                      onClick={removeImage}
-                      className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
-                    >
-                      <X size={16} />
-                    </button>
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full rounded-xl max-h-64 object-cover"
+                      />
+                      <button
+                        onClick={removeImage}
+                        className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
             </div>
 
             {/* Media Options */}
-            <div className="px-4 pb-4">
-              <div className="flex items-center gap-4 py-3 border-t border-gray-100">
-                <label className="flex items-center gap-2 text-gray-600 hover:text-blue-600 cursor-pointer transition-colors">
+            <div className={`px-5 py-3 border-t ${theme.divider}`}>
+              <div className="flex items-center gap-2">
+                <label className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:${theme.accentColor} cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="hidden"
                   />
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
+                  <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-sm">Photo</span>
+                  Photo
                 </label>
 
-                <label className="flex items-center gap-2 text-gray-600 hover:text-blue-600 cursor-pointer transition-colors">
+                <label className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:${theme.accentColor} cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}>
                   <input
                     type="file"
                     accept="application/pdf"
                     onChange={handlePdfUpload}
                     className="hidden"
                   />
-                  <FileText className="w-5 h-5" />
-                  <span className="text-sm">PDF</span>
+                  <FileText className="w-4 h-4 text-red-500" />
+                  PDF
                 </label>
-
-                <button className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span className="text-sm">Event</span>
-                </button>
-
-                <button className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <span className="text-sm">Article</span>
-                </button>
               </div>
             </div>
 
             {/* Post Button */}
-            <div className="flex justify-between items-center p-4 border-t border-gray-100">
-              <span className="text-sm text-gray-400">
-                {postText.length}/700 characters
+            <div className={`flex justify-between items-center px-5 py-3 border-t ${theme.divider}`}>
+              <span className={`text-xs ${postText.length > 650 ? "text-red-500" : theme.textMuted}`}>
+                {postText.length}/700
               </span>
               <button
-                disabled={
-                  (!postText.trim() && !selectedImage) ||
-                  postText.length > 700 ||
-                  isSubmitting
-                }
+                disabled={(!postText.trim() && !selectedImage) || postText.length > 700 || isSubmitting}
                 onClick={handlePostSubmit}
-                className="bg-blue-600 text-white px-6 py-2 rounded-full disabled:bg-gray-300 hover:bg-blue-700 transition-colors font-medium"
+                className="bg-blue-600 text-white px-6 py-2 rounded-full disabled:bg-blue-400/50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors font-semibold text-sm"
               >
-                {isSubmitting ? "Posting..." : "Post"}
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Posting...
+                  </span>
+                ) : "Post"}
               </button>
             </div>
           </div>

@@ -1,7 +1,10 @@
 // Use proxy in dev (Vite proxies /api to backend), or explicit URL in production
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "" : "http://localhost:5000") + "/api/v1";
+// Fixed: Added parentheses to ensure correct operator precedence
+const API_BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL + "/api/v1"
+  : import.meta.env.DEV
+    ? "/api/v1"
+    : "http://localhost:5000/api/v1";
 
 class ApiService {
   /* ================= CORE REQUEST ================= */
@@ -107,7 +110,21 @@ class ApiService {
     return this.request(`/posts/my-posts${params ? `?${params}` : ""}`);
   }
 
+  static async likePost(postId) {
+    return this.request(`/posts/${postId}/like`, { method: "POST" });
+  }
+
+  static async unlikePost(postId) {
+    return this.request(`/posts/${postId}/like`, { method: "DELETE" });
+  }
+
+  static async getRequests(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/requests${params ? `?${params}` : ""}`);
+  }
+
   /* ================= FILE UPLOAD ================= */
+
   // For post attachments, profile images, etc. Uses /upload/upload
 
   static async uploadFile(file, title = "Untitled") {

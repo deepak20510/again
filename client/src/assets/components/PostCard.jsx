@@ -11,7 +11,9 @@ import {
   FileText,
   Edit,
   Trash2,
+  Globe,
 } from "lucide-react";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function PostCard({
   post,
@@ -30,10 +32,12 @@ export default function PostCard({
   onEdit,
   isOwnProfile = false,
 }) {
+  const { theme } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const formatTimeAgo = (dateString) => {
+    if (!dateString) return "Just now";
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now - date;
@@ -41,104 +45,123 @@ export default function PostCard({
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
-  const truncateContent = (content, maxLength = 300) => {
+  const truncateContent = (content, maxLength = 280) => {
+    if (!content) return "";
     if (content.length <= maxLength) return content;
     return content.slice(0, maxLength) + "...";
   };
 
+  const getAuthorName = () => {
+    if (!post.author) return "Anonymous";
+    if (post.author.firstName) {
+      return `${post.author.firstName} ${post.author.lastName || ""}`.trim();
+    }
+    if (post.author.institutionProfile?.name) return post.author.institutionProfile.name;
+    if (post.author.name) return post.author.name;
+    if (post.author.email) return post.author.email.split("@")[0];
+    return "Anonymous";
+  };
+
+  const getAuthorRole = () => {
+    if (!post.author) return "Member";
+    if (post.author.role === "TRAINER") return "Trainer";
+    if (post.author.role === "INSTITUTION") return "Institution";
+    if (post.author.trainerProfile?.bio) return "Expert Trainer";
+    if (post.author.title) return post.author.title;
+    return post.author.role || "Member";
+  };
+
+  const authorName = getAuthorName();
+  const authorInitial = authorName.charAt(0).toUpperCase();
+  const authorAvatar = post.author?.profilePicture || post.author?.avatar;
+
+  const isPDF = post.imageUrl?.toLowerCase().endsWith(".pdf") || post.type === "article";
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className={`${theme.cardBg} rounded-xl shadow-sm border ${theme.cardBorder} overflow-hidden hover:shadow-md transition-all duration-200`}>
       {/* Post Header */}
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              {post.author?.profilePicture ? (
+            {/* Avatar */}
+            <div className="w-11 h-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+              {authorAvatar ? (
                 <img
-                  src={post.author.profilePicture}
-                  alt={post.author.name}
-                  className="w-full h-full rounded-full object-cover"
+                  src={authorAvatar}
+                  alt={authorName}
+                  className="w-full h-full object-cover"
                 />
               ) : (
-                <User className="w-6 h-6 text-white" />
+                <span className="text-white font-bold text-sm">{authorInitial}</span>
               )}
             </div>
 
-            <div className="flex-1">
+            {/* Author Info */}
+            <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors">
-                  {post.author?.firstName ||
-                    post.author?.institutionProfile?.name ||
-                    post.author?.email?.split("@")[0] ||
-                    "Anonymous User"}
+                <h3 className={`font-semibold text-sm ${theme.textPrimary} hover:${theme.accentColor} cursor-pointer transition-colors`}>
+                  {authorName}
                 </h3>
-                {post.author?.headline && (
-                  <span className="text-gray-500 text-sm">•</span>
-                )}
-                {post.author?.headline && (
-                  <span className="text-gray-600 text-sm">
-                    {post.author.headline}
+                {post.author?.role === "TRAINER" && (
+                  <span className="text-xs bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full font-medium">
+                    Trainer
                   </span>
                 )}
               </div>
-
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
-                <span>{post.author?.title || "Member"}</span>
-                <span>•</span>
+              <div className={`flex items-center gap-1.5 text-xs ${theme.textMuted} mt-0.5`}>
+                <span>{getAuthorRole()}</span>
+                <span>·</span>
                 <span>{formatTimeAgo(post.createdAt)}</span>
+                <span>·</span>
+                <Globe size={10} />
               </div>
             </div>
           </div>
 
+          {/* More Options */}
           {isOwnProfile ? (
             <div className="relative">
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className={`p-1.5 rounded-full ${theme.hoverBg} ${theme.textMuted} ${theme.hoverText} transition-colors`}
               >
-                <MoreHorizontal size={20} />
+                <MoreHorizontal size={18} />
               </button>
 
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <div className={`absolute right-0 mt-1 w-44 ${theme.cardBg} rounded-xl shadow-xl border ${theme.cardBorder} overflow-hidden z-20`}>
                   <button
-                    onClick={() => {
-                      onEdit(post);
-                      setShowDropdown(false);
-                    }}
-                    className="w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-100 text-gray-700 transition-colors"
+                    onClick={() => { onEdit?.(post); setShowDropdown(false); }}
+                    className={`w-full px-4 py-2.5 text-left flex items-center gap-2.5 text-sm ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-colors`}
                   >
-                    <Edit size={16} />
+                    <Edit size={14} />
                     Edit Post
                   </button>
                   <button
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to delete this post?",
-                        )
-                      ) {
-                        onDelete(post.id);
+                      if (window.confirm("Are you sure you want to delete this post?")) {
+                        onDelete?.(post.id);
                       }
                       setShowDropdown(false);
                     }}
-                    className="w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-100 text-red-600 transition-colors"
+                    className="w-full px-4 py-2.5 text-left flex items-center gap-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                     Delete Post
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <button className="text-gray-400 hover:text-gray-600 transition-colors">
-              <MoreHorizontal size={20} />
+            <button className={`p-1.5 rounded-full ${theme.hoverBg} ${theme.textMuted} ${theme.hoverText} transition-colors`}>
+              <MoreHorizontal size={18} />
             </button>
           )}
         </div>
@@ -146,17 +169,15 @@ export default function PostCard({
 
       {/* Post Content */}
       <div className="px-4 pb-3">
-        <div className="text-gray-800 leading-relaxed">
-          {isExpanded || post.content.length <= 300 ? (
+        <div className={`text-sm ${theme.textSecondary} leading-relaxed`}>
+          {isExpanded || (post.content?.length || 0) <= 280 ? (
             <div className="whitespace-pre-wrap">{post.content}</div>
           ) : (
             <div>
-              <div className="whitespace-pre-wrap">
-                {truncateContent(post.content)}
-              </div>
+              <div className="whitespace-pre-wrap">{truncateContent(post.content)}</div>
               <button
                 onClick={() => setIsExpanded(true)}
-                className="text-gray-500 hover:text-gray-700 text-sm font-medium mt-2"
+                className={`${theme.accentColor} text-xs font-medium mt-1 hover:underline`}
               >
                 ...see more
               </button>
@@ -168,28 +189,28 @@ export default function PostCard({
       {/* Post Image or PDF */}
       {post.imageUrl && (
         <div className="px-4 pb-3">
-          {post.imageUrl.toLowerCase().endsWith(".pdf") ||
-          post.type === "article" ? (
+          {isPDF ? (
             <a
               href={post.imageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 p-4 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 transition-colors"
+              className={`flex items-center gap-3 p-4 ${theme.hoverBg} rounded-xl border ${theme.cardBorder} transition-colors group`}
             >
-              <FileText className="w-12 h-12 text-red-500 flex-shrink-0" />
+              <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center">
+                <FileText className="w-6 h-6 text-red-500" />
+              </div>
               <div>
-                <p className="font-medium text-gray-900">PDF Document</p>
-                <p className="text-sm text-blue-600">Click to open</p>
+                <p className={`font-medium text-sm ${theme.textPrimary}`}>PDF Document</p>
+                <p className={`text-xs ${theme.accentColor} group-hover:underline`}>Click to open</p>
               </div>
             </a>
           ) : (
             <img
               src={post.imageUrl}
               alt="Post content"
-              className="w-full rounded-lg object-cover max-h-96"
+              className="w-full rounded-xl object-cover max-h-96"
               onError={(e) => {
-                e.currentTarget.src =
-                  "https://via.placeholder.com/800x400?text=Image+Unavailable";
+                e.currentTarget.style.display = "none";
               }}
             />
           )}
@@ -197,105 +218,95 @@ export default function PostCard({
       )}
 
       {/* Engagement Stats */}
-      <div className="px-4 py-2 border-t border-gray-100">
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <ThumbsUp className="w-4 h-4" />
-              <span>{post.likes || 0}</span>
-            </div>
+      {(post.likes > 0 || post.commentCount > 0 || post.shares > 0) && (
+        <div className={`px-4 py-2 border-t ${theme.divider} flex items-center justify-between`}>
+          <div className={`flex items-center gap-3 text-xs ${theme.textMuted}`}>
+            {post.likes > 0 && (
+              <button onClick={onToggleComments} className="flex items-center gap-1 hover:underline">
+                <span className="text-blue-500">👍</span>
+                <span>{post.likes}</span>
+              </button>
+            )}
+          </div>
+          <div className={`flex items-center gap-3 text-xs ${theme.textMuted}`}>
             {post.commentCount > 0 && (
-              <div className="flex items-center gap-1">
-                <MessageCircle className="w-4 h-4" />
-                <span>{post.commentCount}</span>
-              </div>
+              <button onClick={onToggleComments} className="hover:underline">
+                {post.commentCount} comments
+              </button>
             )}
             {post.shares > 0 && (
-              <div className="flex items-center gap-1">
-                <Share2 className="w-4 h-4" />
-                <span>{post.shares}</span>
-              </div>
+              <span>{post.shares} shares</span>
             )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Action Buttons */}
-      <div className="px-4 py-2 border-t border-gray-100">
+      <div className={`px-2 py-1 border-t ${theme.divider}`}>
         <div className="flex items-center justify-around">
           <button
             onClick={onLike}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
-              isLiked
-                ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-sm font-medium group ${isLiked
+                ? "text-blue-500 bg-blue-500/10"
+                : `${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText}`
+              }`}
           >
-            <ThumbsUp className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
-            <span className="text-sm font-medium">Like</span>
+            <ThumbsUp className={`w-4 h-4 transition-transform group-hover:scale-110 ${isLiked ? "fill-current" : ""}`} />
+            <span>Like</span>
           </button>
 
           <button
             onClick={onToggleComments}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} group`}
           >
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-sm font-medium">Comment</span>
+            <MessageCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span>Comment</span>
           </button>
 
           <button
             onClick={onShare}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} group`}
           >
-            <Share2 className="w-5 h-5" />
-            <span className="text-sm font-medium">Share</span>
+            <Share2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span>Share</span>
           </button>
 
           <button
             onClick={onSave}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
-              isSaved
-                ? "text-yellow-600 bg-yellow-50 hover:bg-yellow-100"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${isSaved
+                ? "text-amber-500 bg-amber-500/10"
+                : `${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText}`
+              }`}
           >
-            <Bookmark className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
-            <span className="text-sm font-medium">Save</span>
+            <Bookmark className={`w-4 h-4 group-hover:scale-110 transition-transform ${isSaved ? "fill-current" : ""}`} />
+            <span>Save</span>
           </button>
         </div>
       </div>
 
       {/* Comments Section */}
       {showComments && (
-        <div className="border-t border-gray-100">
+        <div className={`border-t ${theme.divider}`}>
           {/* Comment Input */}
-          <div className="p-4">
-            <div className="flex gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                {user?.profilePicture ? (
-                  <img
-                    src={user.profilePicture}
-                    alt={user.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="w-4 h-4 text-white" />
-                )}
+          <div className="p-3">
+            <div className="flex gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-xs">
+                {user?.name?.charAt(0) || user?.firstName?.charAt(0) || "U"}
               </div>
 
               <div className="flex-1 flex gap-2">
                 <input
                   type="text"
                   value={commentInput}
-                  onChange={(e) => onComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyPress={(e) => e.key === "Enter" && onSubmitComment()}
+                  onChange={(e) => onComment?.(e.target.value)}
+                  placeholder="Write a comment..."
+                  className={`flex-1 ${theme.inputBg} border ${theme.inputBorder} rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400/30 ${theme.inputText} ${theme.inputPlaceholder} transition-all`}
+                  onKeyDown={(e) => e.key === "Enter" && onSubmitComment?.()}
                 />
                 <button
                   onClick={onSubmitComment}
-                  disabled={!commentInput.trim()}
-                  className="text-blue-600 hover:text-blue-700 disabled:text-gray-400 transition-colors"
+                  disabled={!commentInput?.trim()}
+                  className={`${theme.accentColor} disabled:opacity-40 hover:opacity-80 transition-opacity`}
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -307,46 +318,27 @@ export default function PostCard({
           {post.comments && post.comments.length > 0 && (
             <div className="px-4 pb-4 space-y-3">
               {post.comments.slice(0, 3).map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    {comment.author?.profilePicture ? (
-                      <img
-                        src={comment.author.profilePicture}
-                        alt={comment.author.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-4 h-4 text-white" />
-                    )}
+                <div key={comment.id} className="flex gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-xs">
+                    {(comment.author?.name || comment.author?.firstName || "U").charAt(0).toUpperCase()}
                   </div>
-
                   <div className="flex-1">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm text-gray-900">
-                          {comment.author?.name || "Anonymous"}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {formatTimeAgo(comment.createdAt)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-800">{comment.content}</p>
+                    <div className={`${theme.hoverBg} rounded-xl px-3 py-2.5`}>
+                      <span className={`font-semibold text-xs ${theme.textPrimary}`}>
+                        {comment.author?.name || comment.author?.firstName || "Anonymous"}
+                      </span>
+                      <p className={`text-sm ${theme.textSecondary} mt-0.5`}>{comment.content}</p>
                     </div>
-
-                    <div className="flex items-center gap-4 mt-1 ml-3">
-                      <button className="text-xs text-gray-500 hover:text-blue-600 transition-colors">
-                        Like
-                      </button>
-                      <button className="text-xs text-gray-500 hover:text-blue-600 transition-colors">
-                        Reply
-                      </button>
+                    <div className={`flex items-center gap-3 mt-1 ml-3 text-xs ${theme.textMuted}`}>
+                      <span>{formatTimeAgo(comment.createdAt)}</span>
+                      <button className={`hover:${theme.accentColor} transition-colors font-medium`}>Like</button>
+                      <button className={`hover:${theme.accentColor} transition-colors font-medium`}>Reply</button>
                     </div>
                   </div>
                 </div>
               ))}
-
               {post.comments.length > 3 && (
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                <button className={`text-sm font-medium ${theme.accentColor} hover:underline ml-10`}>
                   View all {post.comments.length} comments
                 </button>
               )}

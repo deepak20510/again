@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import EditProfileModal from "../components/EditProfileModal";
 import PostCard from "../components/PostCard";
 import ApiService from "../../services/api";
@@ -30,6 +31,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
+  const { user: authUser, updateProfile } = useAuth();
   const config = DASHBOARD_CONFIG[userType];
   const profile = config.leftSidebar.profile;
 
@@ -38,37 +40,14 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const [editableData, setEditableData] = useState(null);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // Load posts when component mounts, ID changes, or when navigating back to profile
-  useEffect(() => {
-    if (userType === USER_TYPES.TRAINER || userType === USER_TYPES.INSTITUTE) {
-      loadPosts();
-    }
-  }, [id, userType, location.key]); // location.key triggers on navigation
+  // Determine if viewing own profile
+  const isOwnProfile = !id;
 
-  // Listen for custom event to refresh posts (called from feed after posting)
-  useEffect(() => {
-    const handleRefreshPosts = () => {
-      if (
-        userType === USER_TYPES.TRAINER ||
-        userType === USER_TYPES.INSTITUTE
-      ) {
-        loadPosts();
-      }
-    };
-
-    // Add event listener
-    window.addEventListener("refreshPosts", handleRefreshPosts);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener("refreshPosts", handleRefreshPosts);
-    };
-  }, [userType, id]);
-
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     try {
       setPostsLoading(true);
       let response;
@@ -102,7 +81,39 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     } finally {
       setPostsLoading(false);
     }
-  };
+  }, [id, BACKEND_URL]);
+
+  // Load posts when component mounts, ID changes, or when navigating back to profile
+  useEffect(() => {
+    if (userType === USER_TYPES.TRAINER || userType === USER_TYPES.INSTITUTE) {
+      loadPosts();
+    }
+  }, [loadPosts, userType, location.key]);
+
+  // Listen for custom event to refresh posts (called from feed after posting)
+  useEffect(() => {
+    const handleRefreshPosts = () => {
+      if (
+        userType === USER_TYPES.TRAINER ||
+        userType === USER_TYPES.INSTITUTE
+      ) {
+        loadPosts();
+      }
+    };
+
+    window.addEventListener("refreshPosts", handleRefreshPosts);
+    return () => {
+      window.removeEventListener("refreshPosts", handleRefreshPosts);
+    };
+  }, [loadPosts, userType]);
+
+  // Show success message for 3 seconds
+  useEffect(() => {
+    if (saveSuccess) {
+      const timer = setTimeout(() => setSaveSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [saveSuccess]);
 
   const handleDeletePost = (postId) => {
     setPosts(posts.filter((post) => post.id !== postId));
@@ -116,10 +127,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const getProfileData = () => {
     if (userType === USER_TYPES.STUDENT) {
       return {
-        name: profile.name,
+        name: editableData?.name || authUser?.name || profile.name,
         headline:
-          "Computer Science Student | Aspiring Software Developer | AI & ML Enthusiast",
-        location: "Odisha, India",
+          editableData?.headline || "Computer Science Student | Aspiring Software Developer | AI & ML Enthusiast",
+        location: editableData?.location || "Odisha, India",
         education: [
           {
             school: "NIST University",
@@ -135,7 +146,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           },
         ],
         experience: [],
-        skills: [
+        skills: editableData?.skills || [
           "React",
           "JavaScript",
           "Python",
@@ -160,10 +171,11 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
     if (userType === USER_TYPES.TRAINER) {
       return {
-        name: profile.name,
+        name: editableData?.name || authUser?.name || profile.name,
         headline:
-          "JavaScript Expert | Full Stack Developer | Technical Instructor | 5+ Years Experience",
-        location: "Bangalore, India",
+          editableData?.headline || "JavaScript Expert | Full Stack Developer | Technical Instructor | 5+ Years Experience",
+        location: editableData?.location || "Bangalore, India",
+        avatar: editableData?.avatar || authUser?.avatar || profile.avatar,
         education: [
           {
             school: "IIT Delhi",
@@ -172,7 +184,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             logo: "https://via.placeholder.com/50",
           },
         ],
-        experience: [
+        experience: editableData?.experience || [
           {
             title: "Senior Technical Trainer",
             company: "Tech Academy",
@@ -190,7 +202,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             logo: "https://via.placeholder.com/50",
           },
         ],
-        skills: [
+        skills: editableData?.skills || [
           "JavaScript",
           "React",
           "Node.js",
@@ -217,13 +229,13 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
     // Institute
     return {
-      name: profile.name,
+      name: editableData?.name || authUser?.name || profile.name,
       headline:
-        "Leading Educational Institution | Technology Training & Certification | 5000+ Students Trained",
-      location: "Hyderabad, India",
-      founded: "2015",
+        editableData?.headline || "Leading Educational Institution | Technology Training & Certification | 5000+ Students Trained",
+      location: editableData?.location || "Hyderabad, India",
+      founded: editableData?.founded || "2015",
       employees: "200-500",
-      website: "www.techacademy.edu",
+      website: editableData?.website || "www.techacademy.edu",
       education: [],
       programs: [
         {
@@ -242,7 +254,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           duration: "4 months",
         },
       ],
-      skills: [
+      skills: editableData?.skills || [
         "Software Development",
         "Data Science",
         "Cloud Computing",
@@ -265,15 +277,52 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     };
   };
 
-  const data = editableData || getProfileData();
+  const data = getProfileData();
 
   const isStudent = userType === USER_TYPES.STUDENT;
   const isTrainer = userType === USER_TYPES.TRAINER;
   const isInstitute = userType === USER_TYPES.INSTITUTE;
 
   // Handler to save edited profile
-  const handleSaveProfile = (updatedData) => {
-    setEditableData(updatedData);
+  const handleSaveProfile = async (updatedData) => {
+    try {
+      // Update local state
+      setEditableData(updatedData);
+      
+      // Dispatch event to notify other components (like dashboard) of profile changes
+      // Include all profile data for sidebar sync
+      const broadcastData = {
+        name: updatedData.name,
+        headline: updatedData.headline,
+        location: updatedData.location,
+        avatar: updatedData.avatar,
+        skills: updatedData.skills,
+      };
+
+      window.dispatchEvent(
+        new CustomEvent("profileUpdated", {
+          detail: broadcastData,
+        })
+      );
+
+      // Dispatch global update if it's own profile
+      if (isOwnProfile && updateProfile) {
+        try {
+          await updateProfile({
+            name: updatedData.name,
+            headline: updatedData.headline,
+            location: updatedData.location,
+            avatar: updatedData.avatar,
+          });
+        } catch (error) {
+          console.error("Failed to update auth context:", error);
+        }
+      }
+
+      setSaveSuccess(true);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    }
   };
 
   return (
@@ -306,6 +355,16 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         </div>
       </header>
 
+      {/* Success Message */}
+      {saveSuccess && (
+        <div className="max-w-5xl mx-auto mt-4 px-6">
+          <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-emerald-500 text-sm flex items-center gap-2">
+            <CheckCircle2 size={18} />
+            Profile updated successfully!
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="max-w-5xl mx-auto mt-6 px-6">
         {/* Profile Card */}
@@ -323,12 +382,14 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 className="w-full h-full object-cover"
               />
             )}
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className={`absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/30 text-white transition-all duration-300`}
-            >
-              <Camera size={18} />
-            </button>
+            {isOwnProfile && (
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className={`absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/30 text-white transition-all duration-300`}
+              >
+                <Camera size={18} />
+              </button>
+            )}
           </div>
 
           {/* Profile Info */}
@@ -341,33 +402,52 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   alt={data.name}
                   className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-lg object-cover"
                 />
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className={`absolute bottom-0 right-0 p-2 rounded-full ${theme.cardBg} ${theme.cardBorder} border shadow-md ${theme.textSecondary} hover:${theme.accentColor} transition-all duration-300`}
-                >
-                  <Camera size={16} />
-                </button>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => setIsEditModalOpen(true)}
+                    className={`absolute bottom-0 right-0 p-2 rounded-full ${theme.cardBg} ${theme.cardBorder} border shadow-md ${theme.textSecondary} hover:${theme.accentColor} transition-all duration-300`}
+                  >
+                    <Camera size={16} />
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-4">
-              <button
-                className={`px-4 py-2 rounded-full font-medium ${theme.accentBg} text-white hover:opacity-90 transition-all duration-300`}
-              >
-                {isInstitute ? "Follow" : "Connect"}
-              </button>
-              <button
-                className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
-              >
-                Message
-              </button>
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className={`p-2 rounded-lg ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
-              >
-                <Pencil size={20} />
-              </button>
+              {isOwnProfile ? (
+                <>
+                  <button
+                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
+                  >
+                    {isInstitute ? "Follow" : "Connect"}
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
+                  >
+                    Message
+                  </button>
+                  <button
+                    onClick={() => setIsEditModalOpen(true)}
+                    className={`p-2 rounded-lg ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
+                  >
+                    <Pencil size={20} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className={`px-4 py-2 rounded-full font-medium ${theme.accentBg} text-white hover:opacity-90 transition-all duration-300`}
+                  >
+                    {isInstitute ? "Follow" : "Connect"}
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
+                  >
+                    Message
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Info */}
@@ -522,7 +602,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                     <span className={`${theme.accentColor} font-medium`}>
                       {posts.length} posts
                     </span>
-                    {!id && ( // Show Create Post button only on own profile
+                    {isOwnProfile && ( // Show Create Post button only on own profile
                       <button
                         onClick={() =>
                           window.dispatchEvent(
@@ -555,7 +635,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                       <PostCard
                         key={post.id}
                         post={post}
-                        user={{ id }} // Pass the trainer ID
+                        user={{ id: id || authUser?.id }} // Pass the trainer ID
                         isLiked={false}
                         isSaved={false}
                         showComments={false}
@@ -570,7 +650,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                         onToggleComments={() => console.log("Toggle comments")}
                         onDelete={handleDeletePost}
                         onEdit={handleEditPost}
-                        isOwnProfile={false} // Not own profile when viewing other trainer's profile
+                        isOwnProfile={isOwnProfile} // True if viewing own profile, false if viewing other trainer's profile
                       />
                     ))}
                   </div>
@@ -729,13 +809,12 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 {data.skills.map((skill, index) => (
                   <span
                     key={index}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                      isStudent
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium ${isStudent
                         ? "bg-blue-500/10 text-blue-500"
                         : isTrainer
                           ? "bg-emerald-500/10 text-emerald-500"
                           : "bg-purple-500/10 text-purple-500"
-                    }`}
+                      }`}
                   >
                     {skill}
                   </span>
@@ -804,28 +883,28 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                           ? ["Raj Kumar", "Priya Singh", "Amit Sharma"][i - 1]
                           : isTrainer
                             ? ["Deepak Mahato", "Neha Gupta", "Rahul Verma"][
-                                i - 1
-                              ]
+                            i - 1
+                            ]
                             : ["John Trainer", "Sarah Lee", "Mike Chen"][i - 1]}
                       </h4>
                       <p className={`text-xs ${theme.textMuted} mt-0.5`}>
                         {isStudent
                           ? [
-                              "Software Engineer at Google",
-                              "Data Scientist at Amazon",
-                              "Product Manager at Flipkart",
-                            ][i - 1]
+                            "Software Engineer at Google",
+                            "Data Scientist at Amazon",
+                            "Product Manager at Flipkart",
+                          ][i - 1]
                           : isTrainer
                             ? [
-                                "Computer Science Student",
-                                "Aspiring Developer",
-                                "Web Development Enthusiast",
-                              ][i - 1]
+                              "Computer Science Student",
+                              "Aspiring Developer",
+                              "Web Development Enthusiast",
+                            ][i - 1]
                             : [
-                                "JavaScript Expert",
-                                "Python Specialist",
-                                "Full Stack Developer",
-                              ][i - 1]}
+                              "JavaScript Expert",
+                              "Python Specialist",
+                              "Full Stack Developer",
+                            ][i - 1]}
                       </p>
                       <button
                         className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
@@ -873,21 +952,21 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                           : isTrainer
                             ? ["Tech Academy", "Edureka"][i - 1]
                             : ["Google for Education", "Microsoft Learn"][
-                                i - 1
-                              ]}
+                            i - 1
+                            ]}
                       </h4>
                       <p className={`text-xs ${theme.textMuted} mt-0.5`}>
                         {isStudent
                           ? ["184,992 followers", "707,448 followers"][i - 1]
                           : isTrainer
                             ? [
-                                "45 trainers • 1200 students",
-                                "120+ trainers • 5000+ students",
-                              ][i - 1]
+                              "45 trainers • 1200 students",
+                              "120+ trainers • 5000+ students",
+                            ][i - 1]
                             : [
-                                "Corporate Training Partner",
-                                "Certification Provider",
-                              ][i - 1]}
+                              "Corporate Training Partner",
+                              "Certification Provider",
+                            ][i - 1]}
                       </p>
                       <button
                         className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}

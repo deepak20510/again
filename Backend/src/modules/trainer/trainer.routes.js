@@ -5,6 +5,7 @@ import { authMiddleware } from "../../middleware/auth.middleware.js";
 import {
   createTrainerProfile,
   getMyProfile,
+  updateMyProfile,
   searchTrainers,
 } from "./trainer.controller.js";
 import {
@@ -45,6 +46,13 @@ router.post(
 
 // Get own profile
 router.get("/profile", authMiddleware(["TRAINER"]), getMyProfile);
+
+// Update own profile
+router.put(
+  "/profile",
+  authMiddleware(["TRAINER"]),
+  updateMyProfile,
+);
 
 // Public trainer profile (keep LAST)
 router.get("/:id", getPublicTrainerProfile);

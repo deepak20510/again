@@ -13,6 +13,9 @@ const AUTH_ACTIONS = {
   SIGNUP_FAILURE: "SIGNUP_FAILURE",
   LOGOUT: "LOGOUT",
   CLEAR_ERROR: "CLEAR_ERROR",
+  UPDATE_PROFILE_START: "UPDATE_PROFILE_START",
+  UPDATE_PROFILE_SUCCESS: "UPDATE_PROFILE_SUCCESS",
+  UPDATE_PROFILE_FAILURE: "UPDATE_PROFILE_FAILURE",
 };
 
 // ================= SAFE LOCALSTORAGE HYDRATION =================
@@ -94,6 +97,29 @@ const authReducer = (state, action) => {
         error: null,
       };
 
+    case AUTH_ACTIONS.UPDATE_PROFILE_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case AUTH_ACTIONS.UPDATE_PROFILE_SUCCESS:
+      localStorage.setItem("user", JSON.stringify(action.payload));
+      return {
+        ...state,
+        user: action.payload,
+        loading: false,
+        error: null,
+      };
+
+    case AUTH_ACTIONS.UPDATE_PROFILE_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
     default:
       return state;
   }
@@ -153,6 +179,32 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
   };
 
+  const updateProfile = async (profileData) => {
+    dispatch({ type: AUTH_ACTIONS.UPDATE_PROFILE_START });
+
+    try {
+      const response = await ApiService.updateTrainerProfile(profileData);
+
+      const updatedUser = {
+        ...state.user,
+        ...profileData,
+      };
+
+      dispatch({
+        type: AUTH_ACTIONS.UPDATE_PROFILE_SUCCESS,
+        payload: updatedUser,
+      });
+
+      return response;
+    } catch (error) {
+      dispatch({
+        type: AUTH_ACTIONS.UPDATE_PROFILE_FAILURE,
+        payload: error.message || "Profile update failed",
+      });
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -161,6 +213,7 @@ export const AuthProvider = ({ children }) => {
         signup,
         logout,
         clearError,
+        updateProfile,
       }}
     >
       {children}

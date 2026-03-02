@@ -20,17 +20,17 @@ import {
 
 const router = express.Router();
 
-// Public routes
-router.get("/", validate(getPostsSchema, "query"), getPosts);
-router.get("/:postId", getPostById);
-
-// Protected routes
+// Protected routes (must come BEFORE /:postId to avoid route conflict)
 router.get(
   "/my-posts",
-  authMiddleware,
+  authMiddleware(["TRAINER", "INSTITUTION", "STUDENT"]),
   validate(getPostsSchema, "query"),
   getMyPosts,
 );
+
+// Public routes
+router.get("/", validate(getPostsSchema, "query"), getPosts);
+router.get("/:postId", getPostById);
 
 // Protected routes - trainers and institutions only
 router.post(
@@ -41,12 +41,12 @@ router.post(
 );
 router.put(
   "/:postId",
-  authMiddleware,
+  authMiddleware(["TRAINER", "INSTITUTION", "STUDENT", "ADMIN"]),
   validate(updatePostSchema, "body"),
   updatePost,
 );
-router.delete("/:postId", authMiddleware, deletePost);
-router.post("/:postId/like", authMiddleware, likePost);
-router.delete("/:postId/like", authMiddleware, unlikePost);
+router.delete("/:postId", authMiddleware(["TRAINER", "INSTITUTION", "STUDENT", "ADMIN"]), deletePost);
+router.post("/:postId/like", authMiddleware(["TRAINER", "INSTITUTION", "STUDENT"]), likePost);
+router.delete("/:postId/like", authMiddleware(["TRAINER", "INSTITUTION", "STUDENT"]), unlikePost);
 
 export default router;

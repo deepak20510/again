@@ -2,6 +2,8 @@ import { searchTrainersService } from "./searchTrainerService.js";
 import {
   createTrainerProfileService,
   getMyTrainerProfileService,
+  updateTrainerProfileService,
+  updateUserProfileService,
 } from "./trainer.services.js";
 
 export const createTrainerProfile = async (req, res, next) => {
@@ -34,6 +36,62 @@ export const getMyProfile = async (req, res, next) => {
       success: true,
       message: "Trainer profile fetched successfully",
       data: profile,
+      meta: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMyProfile = async (req, res, next) => {
+  try {
+    const { userId } = req.user;
+    const { name, headline, location, bio, experience, skills, avatar, firstName, lastName } = req.body;
+
+    // Update user table (name, avatar)
+    const userUpdate = {};
+    if (firstName) userUpdate.firstName = firstName;
+    if (lastName) userUpdate.lastName = lastName;
+    if (name) {
+      // Parse name into firstName and lastName
+      const nameParts = name.trim().split(" ");
+      if (nameParts.length >= 2) {
+        userUpdate.firstName = nameParts[0];
+        userUpdate.lastName = nameParts.slice(1).join(" ");
+      } else {
+        userUpdate.firstName = name;
+        userUpdate.lastName = "";
+      }
+    }
+    if (avatar) userUpdate.avatar = avatar;
+
+    let updatedUser = null;
+    if (Object.keys(userUpdate).length > 0) {
+      updatedUser = await updateUserProfileService(userId, userUpdate);
+    }
+
+    // Update trainer profile (bio, location, skills)
+    // Note: experience is stored as Int (years), skills as String[]
+    const profileUpdate = {};
+    if (headline) profileUpdate.bio = headline;
+    if (bio) profileUpdate.bio = bio;
+    if (location) profileUpdate.location = location;
+    if (Array.isArray(skills)) profileUpdate.skills = skills;
+    // Only update experience if it's a number (years)
+    if (typeof experience === "number") profileUpdate.experience = experience;
+
+    let updatedProfile = null;
+    if (Object.keys(profileUpdate).length > 0) {
+      updatedProfile = await updateTrainerProfileService(userId, profileUpdate);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: {
+        user: updatedUser,
+        profile: updatedProfile,
+      },
       meta: null,
     });
   } catch (error) {
