@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { USER_TYPES } from "../../config/dashboardConfig";
 import { useAuth } from "../../context/AuthContext";
+import LoadingScreen from "../../components/LoadingScreen";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -68,6 +69,11 @@ export default function LoginPage() {
   const handleSocialLogin = (provider) => {
     console.log(`Logging in with ${provider}`);
   };
+
+  // Show loading screen while logging in
+  if (isLoading) {
+    return <LoadingScreen message="Logging you in" />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

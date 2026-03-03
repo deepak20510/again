@@ -29,7 +29,14 @@ class ApiService {
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, config);
 
-      const data = await response.json().catch(() => ({}));
+      // Try to parse JSON response
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error("Failed to parse JSON response:", jsonError);
+        data = { message: "Invalid server response" };
+      }
 
       // Handle 429 (Too Many Requests) with exponential backoff
       if (response.status === 429 && retryCount < 3) {
@@ -56,6 +63,11 @@ class ApiService {
 
       return data;
     } catch (error) {
+      // Check if it's a network error
+      if (error.message === "Failed to fetch" || error.name === "TypeError") {
+        console.error("Network error - is the backend server running?");
+        throw new Error("Unable to connect to server. Please check your connection and try again.");
+      }
       console.error("API ERROR:", error.message);
       throw error;
     }

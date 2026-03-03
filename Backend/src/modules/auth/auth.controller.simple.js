@@ -38,18 +38,28 @@ export const signup = async (req, res, next) => {
       organization
     });
 
-    // Optional: Send verification OTP (non-blocking, for user convenience only)
-    // User can verify later if they want, but it's not required
-    sendVerificationOTP(email).catch(err => {
+    // Send verification OTP (REQUIRED for signup)
+    try {
+      await sendVerificationOTP(email);
+      console.log(`[Signup] Verification OTP sent to ${email}`);
+    } catch (err) {
       console.error("Failed to send verification OTP:", err);
-      // Don't fail signup if email fails
-    });
+      // If email fails, delete the user and return error
+      await prisma.user.delete({ where: { id: result.user.id } }).catch(() => {});
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again.",
+      });
+    }
 
     res.status(201).json({
       success: true,
-      message: "User created successfully. You can verify your email later if needed.",
-      data: result,
-      requiresVerification: false, // Changed to false - verification is optional
+      message: "Verification OTP sent to your email. Please verify to continue.",
+      data: {
+        user: result.user, // Don't send token yet
+        email: email,
+      },
+      requiresVerification: true, // Changed to true - verification is REQUIRED
     });
   } catch (err) {
     console.error("Simple signup error:", err);

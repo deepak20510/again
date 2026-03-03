@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { USER_TYPES } from "../../config/dashboardConfig";
 import { useAuth } from "../../context/AuthContext";
+import LoadingScreen from "../../components/LoadingScreen";
 
 const userTypeConfig = {
   [USER_TYPES.STUDENT]: {
@@ -129,17 +130,28 @@ export default function SignupPage() {
 
       const response = await signup(signupData);
 
-      // Verification is optional - proceed to dashboard directly
-      const userRole = response.data?.user?.role?.toLowerCase();
+      // Check if verification is required
+      if (response.requiresVerification) {
+        // Navigate to verification page with email
+        navigate("/verify-email", { 
+          state: { 
+            email: formData.email,
+            fromSignup: true 
+          } 
+        });
+      } else {
+        // Verification is optional - proceed to dashboard directly
+        const userRole = response.data?.user?.role?.toLowerCase();
 
-      const roleRoutes = {
-        student: "/student",
-        trainer: "/trainer",
-        institution: "/institute",
-        admin: "/admin",
-      };
+        const roleRoutes = {
+          student: "/student",
+          trainer: "/trainer",
+          institution: "/institute",
+          admin: "/admin",
+        };
 
-      navigate(roleRoutes[userRole] || "/student");
+        navigate(roleRoutes[userRole] || "/student");
+      }
     } catch {
       // Error already handled inside AuthContext
     } finally {
@@ -148,6 +160,11 @@ export default function SignupPage() {
   };
   const selectedConfig = userTypeConfig[selectedType];
   const SelectedIcon = selectedConfig.icon;
+
+  // Show loading screen while processing signup
+  if (isLoading) {
+    return <LoadingScreen message="Creating your account" />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

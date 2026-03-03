@@ -147,35 +147,11 @@ export const signupService = async ({ email, password, role, phone, organization
     createdUser.role,
   );
 
-  // Send verification OTP email (non-blocking)
-  try {
-    const crypto = await import("crypto");
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const hashedOTP = await bcrypt.hash(otp, SALT_ROUNDS);
-    const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Save OTP to database
-    await client.user.update({
-      where: { id: createdUser.id },
-      data: {
-        resetPasswordOTP: hashedOTP,
-        resetPasswordOTPExpires: expiryTime,
-      },
-    });
-
-    // Send email (don't wait for it)
-    sendVerificationOTPEmail(createdUser.email, otp).catch(err => {
-      console.error("Failed to send verification email:", err);
-    });
-
-    console.log(`[Signup] Verification OTP sent to ${createdUser.email}`);
-  } catch (error) {
-    console.error("[Signup] Failed to send verification OTP:", error);
-    // Don't fail signup if email fails
-  }
+  // Don't send verification OTP here - it's handled in the controller
+  // Token will be sent after email verification
 
   return {
-    token,
+    token, // Keep token for now, but controller won't send it until verified
     user: {
       id: createdUser.id,
       email: createdUser.email,

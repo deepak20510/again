@@ -79,16 +79,23 @@ export const sendVerificationOTP = async (email) => {
 
 /**
  * Verify email with OTP
+ * Returns token after successful verification for signup flow
  */
 export const verifyEmailOTP = async (email, otp) => {
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Fetch only needed fields for speed
+  // Fetch user with all needed fields
   const user = await client.user.findUnique({
     where: { email: normalizedEmail },
     select: {
       id: true,
       email: true,
+      username: true,
+      role: true,
+      firstName: true,
+      lastName: true,
+      profilePicture: true,
+      headline: true,
       isVerified: true,
       resetPasswordOTP: true,
       resetPasswordOTPExpires: true
@@ -128,9 +135,38 @@ export const verifyEmailOTP = async (email, otp) => {
     },
   });
 
+  // Generate JWT token for automatic login after verification
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "1d",
+      issuer: process.env.JWT_ISSUER || "tutroid",
+      audience: process.env.JWT_AUDIENCE || "tutroid-users",
+    }
+  );
+
+  console.log(`[Email Verification] Email verified for ${normalizedEmail}`);
+
   return {
     success: true,
     message: "Email verified successfully",
+    data: {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profilePicture: user.profilePicture,
+        headline: user.headline,
+      },
+    },
   };
 };
 

@@ -2,11 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Mail, ArrowRight, AlertTriangle, CheckCircle, Loader } from "lucide-react";
 import ApiService from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import LoadingScreen from "../../components/LoadingScreen";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const email = location.state?.email;
+  const fromSignup = location.state?.fromSignup;
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,12 +73,33 @@ export default function VerifyEmailPage() {
     setIsLoading(true);
 
     try {
-      await ApiService.verifyEmail({ email, otp: otpString });
+      const response = await ApiService.verifyEmail({ email, otp: otpString });
       setSuccess(true);
 
-      setTimeout(() => {
-        navigate("/login", { state: { message: "Email verified! Please log in." } });
-      }, 2000);
+      // If from signup, log the user in automatically
+      if (fromSignup && response.data?.token) {
+        // Store token and user data
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+
+        setTimeout(() => {
+          // Navigate to appropriate dashboard based on role
+          const userRole = response.data.user.role.toLowerCase();
+          const roleRoutes = {
+            student: "/student",
+            trainer: "/trainer",
+            institution: "/institute",
+            admin: "/admin",
+          };
+          navigate(roleRoutes[userRole] || "/student");
+          window.location.reload(); // Reload to update auth context
+        }, 2000);
+      } else {
+        // From forgot password or other flow - go to login
+        setTimeout(() => {
+          navigate("/login", { state: { message: "Email verified! Please log in." } });
+        }, 2000);
+      }
     } catch (err) {
       setError(err.message || "Invalid OTP. Please try again.");
     } finally {
@@ -103,6 +128,11 @@ export default function VerifyEmailPage() {
 
   if (!email) return null;
 
+  // Show loading screen during verification or success redirect
+  if (isLoading || success) {
+    return <LoadingScreen message={success ? "Verification successful" : "Verifying your email"} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
       <div className="max-w-md w-full">
@@ -128,7 +158,9 @@ export default function VerifyEmailPage() {
               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
               <div>
                 <p className="text-green-600 font-medium">Email verified successfully!</p>
-                <p className="text-green-500 text-sm mt-1">Redirecting to login...</p>
+                <p className="text-green-500 text-sm mt-1">
+                  {fromSignup ? "Logging you in..." : "Redirecting to login..."}
+                </p>
               </div>
             </div>
           </div>
