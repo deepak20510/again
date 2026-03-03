@@ -39,6 +39,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [hireInterestSent, setHireInterestSent] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -51,6 +54,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       const response = await ApiService.getUserProfile(username); // username can be undefined for own profile
       if (response.success) {
         setProfileData(response.data);
+        // Load analytics for this user
+        loadAnalytics(response.data.id);
       }
     } catch (error) {
       console.error("Failed to load profile:", error);
@@ -58,6 +63,20 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       setLoading(false);
     }
   }, [username]);
+
+  const loadAnalytics = async (userId = null) => {
+    try {
+      setAnalyticsLoading(true);
+      const response = await ApiService.getUserAnalytics(userId);
+      if (response.success) {
+        setAnalytics(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load analytics:", error);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadProfile();
@@ -189,6 +208,37 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     }
   };
 
+  const handleCopyProfileURL = async () => {
+    try {
+      const profileUsername = profileData?.username || authUser?.username;
+      const userRole = profileData?.role || authUser?.role;
+      const rolePath = userRole === 'INSTITUTION' ? 'institute' : userRole?.toLowerCase();
+      const profileURL = `${window.location.origin}/${rolePath}/profile/${profileUsername}`;
+      
+      await navigator.clipboard.writeText(profileURL);
+      setUrlCopied(true);
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setUrlCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy URL:", error);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      const profileUsername = profileData?.username || authUser?.username;
+      const userRole = profileData?.role || authUser?.role;
+      const rolePath = userRole === 'INSTITUTION' ? 'institute' : userRole?.toLowerCase();
+      textArea.value = `${window.location.origin}/${rolePath}/profile/${profileUsername}`;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
+    }
+  };
+
   // Profile data mapped from backend fields
   const getMappedData = () => {
     if (!profileData) {
@@ -228,9 +278,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       coverImage: profileData.coverImage || null,
       skills: profileData.trainerProfile?.skills || profileData.skills || [],
       analytics: {
-        views: profileData.profileViews || 0,
-        impressions: profileData.postImpressions || 0,
-        appearances: profileData.searchAppearances || 0,
+        views: analytics?.overview?.profileViews || profileData.profileViews || 0,
+        impressions: analytics?.overview?.postImpressions || profileData.postImpressions || 0,
+        appearances: analytics?.overview?.searchAppearances || profileData.searchAppearances || 0,
       },
       activity: {
         followers: profileData.followersCount || 0,
@@ -562,53 +612,97 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div
-                  className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
-                >
-                  <div className={`text-xl font-bold ${theme.textPrimary}`}>
-                    {data.analytics.views}
-                  </div>
-                  <div className={`text-sm ${theme.textMuted}`}>
-                    Profile views
-                  </div>
-                  <div className={`text-xs ${theme.textMuted} mt-1`}>
-                    Past 7 days
-                  </div>
+              {analyticsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin h-8 w-8 border-b-2 border-blue-500 rounded-full" />
                 </div>
-                <div
-                  className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
-                >
-                  <div className={`text-xl font-bold ${theme.textPrimary}`}>
-                    {data.analytics.impressions}
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div
+                      className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
+                    >
+                      <div className={`text-xl font-bold ${theme.textPrimary}`}>
+                        {analytics?.overview?.profileViews || 0}
+                      </div>
+                      <div className={`text-sm ${theme.textMuted}`}>
+                        Profile views
+                      </div>
+                      <div className={`text-xs ${theme.textMuted} mt-1`}>
+                        Past 7 days
+                      </div>
+                    </div>
+                    <div
+                      className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
+                    >
+                      <div className={`text-xl font-bold ${theme.textPrimary}`}>
+                        {analytics?.overview?.postImpressions || 0}
+                      </div>
+                      <div className={`text-sm ${theme.textMuted}`}>
+                        Post impressions
+                      </div>
+                      <div className={`text-xs ${theme.textMuted} mt-1`}>
+                        Past 7 days
+                      </div>
+                    </div>
+                    <div
+                      className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
+                    >
+                      <div className={`text-xl font-bold ${theme.textPrimary}`}>
+                        {analytics?.overview?.searchAppearances || 0}
+                      </div>
+                      <div className={`text-sm ${theme.textMuted}`}>
+                        Search appearances
+                      </div>
+                      <div className={`text-xs ${theme.textMuted} mt-1`}>
+                        Past 7 days
+                      </div>
+                    </div>
                   </div>
-                  <div className={`text-sm ${theme.textMuted}`}>
-                    Post impressions
-                  </div>
-                  <div className={`text-xs ${theme.textMuted} mt-1`}>
-                    Past 7 days
-                  </div>
-                </div>
-                <div
-                  className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
-                >
-                  <div className={`text-xl font-bold ${theme.textPrimary}`}>
-                    {data.analytics.appearances}
-                  </div>
-                  <div className={`text-sm ${theme.textMuted}`}>
-                    Search appearances
-                  </div>
-                  <div className={`text-xs ${theme.textMuted} mt-1`}>
-                    Past 7 days
-                  </div>
-                </div>
-              </div>
 
-              <button
-                className={`mt-4 text-sm ${theme.accentColor} font-medium hover:underline`}
-              >
-                Show all analytics →
-              </button>
+                  {/* Additional Analytics Details */}
+                  {analytics && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className={`text-sm ${theme.textMuted}`}>
+                          <span className="font-medium">Connections:</span>{" "}
+                          <span className={theme.textPrimary}>
+                            {analytics.engagement?.connections || 0}
+                          </span>
+                        </div>
+                        <div className={`text-sm ${theme.textMuted}`}>
+                          <span className="font-medium">Total Posts:</span>{" "}
+                          <span className={theme.textPrimary}>
+                            {analytics.content?.totalPosts || 0}
+                          </span>
+                        </div>
+                        <div className={`text-sm ${theme.textMuted}`}>
+                          <span className="font-medium">Average Rating:</span>{" "}
+                          <span className={theme.textPrimary}>
+                            {analytics.content?.averageRating?.toFixed(1) || "0.0"} ⭐
+                          </span>
+                        </div>
+                        <div className={`text-sm ${theme.textMuted}`}>
+                          <span className="font-medium">Growth:</span>{" "}
+                          <span className={`${analytics.overview?.growthPercentage >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {analytics.overview?.growthPercentage >= 0 ? '+' : ''}{analytics.overview?.growthPercentage || 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      console.log("Full analytics:", analytics);
+                      alert("Detailed analytics view coming soon!");
+                    }}
+                    className={`mt-4 text-sm ${theme.accentColor} font-medium hover:underline`}
+                  >
+                    Show all analytics →
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Posts - Only for Trainer & Institute */}
@@ -1064,14 +1158,24 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   <p
                     className={`text-sm ${theme.textMuted} mt-1 truncate max-w-45`}
                   >
-                    www.tutroid.com/in/
-                    {data.name.toLowerCase().replace(/\s+/g, "-")}
+                    {window.location.origin}/{data.role === 'INSTITUTION' ? 'institute' : data.role?.toLowerCase()}/profile/{data.username || data.name.toLowerCase().replace(/\s+/g, "-")}
                   </p>
                 </div>
                 <button
-                  className={`p-2 rounded-full ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
+                  onClick={handleCopyProfileURL}
+                  className={`p-2 rounded-full ${urlCopied ? 'bg-green-500 text-white' : `${theme.hoverBg} ${theme.hoverText}`} transition-all duration-300 relative group`}
+                  title={urlCopied ? "Copied!" : "Copy profile URL"}
                 >
-                  <Share2 size={18} />
+                  {urlCopied ? (
+                    <CheckCircle2 size={18} />
+                  ) : (
+                    <Share2 size={18} />
+                  )}
+                  {urlCopied && (
+                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                      Copied!
+                    </span>
+                  )}
                 </button>
               </div>
             </div>

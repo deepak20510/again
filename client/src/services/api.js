@@ -402,6 +402,13 @@ class ApiService {
     return this.request(`/networking/hire-interest/${trainerId}`, { method: "POST" });
   }
 
+  /* ================= ANALYTICS ================= */
+
+  static async getUserAnalytics(userId = null) {
+    const url = userId ? `/analytics/${userId}` : "/analytics";
+    return this.request(url);
+  }
+
   /* ================= MESSAGING ================= */
 
   static async createConversation(data) {
