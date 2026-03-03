@@ -57,7 +57,13 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   isActive       Boolean   @default(true)
+  isVerified     Boolean   @default(false)
+  isBanned       Boolean   @default(false)
   deletedAt      DateTime?
+  
+  // Password reset fields
+  resetPasswordOTP        String?
+  resetPasswordOTPExpires DateTime?
 
   trainerProfile     TrainerProfile?
   institutionProfile InstitutionProfile?

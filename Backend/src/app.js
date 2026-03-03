@@ -10,6 +10,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 import postRoutes from "./modules/posts/posts.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import trainerRoutes from "./modules/trainer/trainer.routes.js";
@@ -23,6 +24,7 @@ import simpleUploadRoutes from "./modules/uploads/simple-upload.routes.js";
 import networkingRoutes from "./modules/networking/networking.routes.js";
 import messagingRoutes from "./modules/messaging/messaging.routes.js";
 import userRoutes from "./modules/auth/user.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 
 import { errorHandler } from "./middleware/error.middleware.js";
 import { auditMiddleware } from "./middleware/audit.middleware.js";
@@ -70,19 +72,7 @@ app.use(morgan("dev"));
 // Audit logging (after authentication)
 app.use(auditMiddleware);
 
-/* ================= PUBLIC STATIC FILES ================= */
-
-// Serve uploaded materials publicly (use absolute path for reliability)
-const materialsPath = path.join(__dirname, "../storage/materials");
-app.use(
-  "/materials",
-  express.static(materialsPath, {
-    setHeaders: (res) => {
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      res.setHeader("Content-Disposition", "inline");
-    },
-  }),
-);
+// Note: Static file serving for /materials removed - now using Cloudinary CDN
 
 app.use("/api/posts", postRoutes); // legacy support
 
@@ -112,6 +102,7 @@ app.use("/api/v1/upload", simpleUploadRoutes);
 app.use("/api/v1/networking", networkingRoutes);
 app.use("/api/v1/messaging", messagingRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 // Legacy routes (backward compatibility)
 app.use("/api/auth", authRoutes);
@@ -129,7 +120,7 @@ if (process.env.NODE_ENV === "production") {
   const clientBuild = path.join(__dirname, "../../client/dist");
   app.use(express.static(clientBuild));
   app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/materials") || req.path === "/health") {
+    if (req.path.startsWith("/api") || req.path === "/health") {
       return next();
     }
     res.sendFile(path.join(clientBuild, "index.html"));

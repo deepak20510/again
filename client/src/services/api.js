@@ -385,6 +385,68 @@ class ApiService {
     return this.request(`/messaging/read/${conversationId}`, { method: "PATCH" });
   }
 
+  /* ================= ADMIN ================= */
+  // Backend: GET /admin/users, PATCH /admin/users/:id/verify, PATCH /admin/users/:id/ban
+  // GET /admin/reports, PATCH /admin/reports/:id/action, GET /admin/analytics
+
+  static async getAdminUsers(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/admin/users${params ? `?${params}` : ""}`);
+  }
+
+  static async verifyUser(userId, verified = true) {
+    return this.request(`/admin/users/${userId}/verify`, {
+      method: "PATCH",
+      body: JSON.stringify({ verified }),
+    });
+  }
+
+  static async banUser(userId, banned = true, reason) {
+    return this.request(`/admin/users/${userId}/ban`, {
+      method: "PATCH",
+      body: JSON.stringify({ banned, reason }),
+    });
+  }
+
+  static async getAdminReports(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/admin/reports${params ? `?${params}` : ""}`);
+  }
+
+  static async takeReportAction(reportId, data) {
+    return this.request(`/admin/reports/${reportId}/action`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async getAdminAnalytics() {
+    return this.request("/admin/analytics");
+  }
+
+  /* ================= PASSWORD RESET ================= */
+
+  static async forgotPassword(data) {
+    return this.request("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async verifyResetOTP(data) {
+    return this.request("/auth/verify-reset-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async resetPassword(data) {
+    return this.request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   /* ================= OPTIONAL (not in backend - return empty to avoid errors) ================= */
 
 

@@ -8,7 +8,7 @@ export const uploadMaterialService = async (userId, file, title) => {
     where: { userId },
     select: { id: true, isActive: true },
   });
-  console.log("TRAINER:", trainer); // 👈 ADD HERE
+  console.log("TRAINER:", trainer);
 
   if (!trainer || !trainer.isActive) {
     throw new Error("Trainer not allowed to upload");
@@ -16,10 +16,13 @@ export const uploadMaterialService = async (userId, file, title) => {
 
   const cleanTitle = xss(title);
 
+  // Use Cloudinary secure URL
+  const fileUrl = file.path || file.secure_url;
+
   const material = await client.material.create({
     data: {
-      title: cleanTitle, // <-- save sanitized version
-      fileUrl: `/materials/${file.filename}`,
+      title: cleanTitle,
+      fileUrl: fileUrl, // Cloudinary URL
       trainerId: trainer.id,
     },
     select: {
