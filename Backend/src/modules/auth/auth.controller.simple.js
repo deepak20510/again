@@ -1,4 +1,5 @@
 import { signupService, loginService } from "./auth.service.js";
+import { sendVerificationOTP } from "./emailVerification.service.js";
 import prisma from "../../db.js";
 
 // ================= SIMPLE SIGNUP CONTROLLER =================
@@ -37,11 +38,18 @@ export const signup = async (req, res, next) => {
       organization
     });
 
+    // Optional: Send verification OTP (non-blocking, for user convenience only)
+    // User can verify later if they want, but it's not required
+    sendVerificationOTP(email).catch(err => {
+      console.error("Failed to send verification OTP:", err);
+      // Don't fail signup if email fails
+    });
 
     res.status(201).json({
       success: true,
-      message: "User created successfully",
+      message: "User created successfully. You can verify your email later if needed.",
       data: result,
+      requiresVerification: false, // Changed to false - verification is optional
     });
   } catch (err) {
     console.error("Simple signup error:", err);

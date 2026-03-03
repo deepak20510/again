@@ -12,7 +12,8 @@ export const advancedSearch = async (req, res, next) => {
             verified,
             page = 1,
             limit = 20,
-            sort = "rating_desc"
+            sort = "rating_desc",
+            search // General search term for name, headline, bio
         } = req.query;
 
         const where = {};
@@ -23,10 +24,23 @@ export const advancedSearch = async (req, res, next) => {
             userWhere.role = role;
         }
 
-        // Location filter
-        if (location) {
+        // General search filter - searches across multiple fields
+        if (search && search.trim()) {
+            const searchTerm = search.trim();
+            userWhere.OR = [
+                { firstName: { contains: searchTerm, mode: "insensitive" } },
+                { lastName: { contains: searchTerm, mode: "insensitive" } },
+                { username: { contains: searchTerm, mode: "insensitive" } },
+                { headline: { contains: searchTerm, mode: "insensitive" } },
+                { bio: { contains: searchTerm, mode: "insensitive" } },
+                { location: { contains: searchTerm, mode: "insensitive" } }
+            ];
+        }
+
+        // Location filter (specific location filter, overrides search if both provided)
+        if (location && location.trim() && !search) {
             userWhere.location = {
-                contains: location,
+                contains: location.trim(),
                 mode: "insensitive"
             };
         }
@@ -34,25 +48,57 @@ export const advancedSearch = async (req, res, next) => {
         // Build profile-specific filters
         let profileWhere = { isActive: true };
 
-        if (role === "TRAINER") {
-            if (skill) {
-                profileWhere.skills = { has: skill };
+        if (role === "TRAINER" || !role) {
+            // Skill filter - search in skills array
+            if (skill && skill.trim()) {
+                const skillTerm = skill.trim();
+                profileWhere.skills = {
+                    some: {
+                        contains: skillTerm,
+                        mode: "insensitive"
+                    }
+                };
             }
+            
+            // Rating filter
             if (minRating) {
                 profileWhere.rating = { gte: parseFloat(minRating) };
             }
+            
+            // Experience filter
             if (minExperience !== undefined || maxExperience !== undefined) {
                 profileWhere.experience = {
                     ...(minExperience && { gte: parseInt(minExperience) }),
                     ...(maxExperience && { lte: parseInt(maxExperience) })
                 };
             }
+            
+            // Verified filter
             if (verified === "true") {
                 profileWhere.verified = true;
+            }
+
+            // Bio/location search in profile
+            if (search && search.trim()) {
+                const searchTerm = search.trim();
+                profileWhere.OR = [
+                    { bio: { contains: searchTerm, mode: "insensitive" } },
+                    { location: { contains: searchTerm, mode: "insensitive" } },
+                    { skills: { hasSome: [searchTerm] } }
+                ];
             }
         } else if (role === "INSTITUTION") {
             if (minRating) {
                 profileWhere.rating = { gte: parseFloat(minRating) };
+            }
+            
+            // Institution name and location search
+            if (search && search.trim()) {
+                const searchTerm = search.trim();
+                profileWhere.OR = [
+                    { name: { contains: searchTerm, mode: "insensitive" } },
+                    { location: { contains: searchTerm, mode: "insensitive" } }
+                ];
             }
         }
 
@@ -72,16 +118,22 @@ export const advancedSearch = async (req, res, next) => {
         let total = 0;
 
         if (!role || role === "TRAINER") {
+            // Combine profile and user filters
+            const combinedWhere = {
+                ...profileWhere,
+                user: userWhere
+            };
+
             const [trainers, trainerCount] = await Promise.all([
                 prisma.trainerProfile.findMany({
-                    where: profileWhere,
+                    where: combinedWhere,
                     include: {
                         user: {
-                            where: userWhere,
                             select: {
                                 id: true,
                                 firstName: true,
                                 lastName: true,
+                                username: true,
                                 email: true,
                                 profilePicture: true,
                                 bio: true,
@@ -95,7 +147,7 @@ export const advancedSearch = async (req, res, next) => {
                     skip: (parseInt(page) - 1) * parseInt(limit),
                     take: parseInt(limit)
                 }),
-                prisma.trainerProfile.count({ where: profileWhere })
+                prisma.trainerProfile.count({ where: combinedWhere })
             ]);
 
             results = trainers
@@ -116,16 +168,22 @@ export const advancedSearch = async (req, res, next) => {
                 }));
             total = trainerCount;
         } else if (role === "INSTITUTION") {
+            // Combine profile and user filters
+            const combinedWhere = {
+                ...profileWhere,
+                user: userWhere
+            };
+
             const [institutions, institutionCount] = await Promise.all([
                 prisma.institutionProfile.findMany({
-                    where: profileWhere,
+                    where: combinedWhere,
                     include: {
                         user: {
-                            where: userWhere,
                             select: {
                                 id: true,
                                 firstName: true,
                                 lastName: true,
+                                username: true,
                                 email: true,
                                 profilePicture: true,
                                 bio: true,
@@ -139,7 +197,7 @@ export const advancedSearch = async (req, res, next) => {
                     skip: (parseInt(page) - 1) * parseInt(limit),
                     take: parseInt(limit)
                 }),
-                prisma.institutionProfile.count({ where: profileWhere })
+                prisma.institutionProfile.count({ where: combinedWhere })
             ]);
 
             results = institutions

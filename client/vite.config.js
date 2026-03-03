@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     hmr: {
-      overlay: false, // Disable Vite error overlay
+      overlay: false,
     },
     proxy: {
       "/api": {
@@ -24,5 +24,26 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['lucide-react'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'lucide-react'],
   },
 });

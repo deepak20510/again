@@ -3,20 +3,14 @@ import { useTheme } from "../../context/ThemeContext";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import EditProfileModal from "../components/EditProfileModal";
+import DirectMessageModal from "../../components/DirectMessageModal";
 import PostCard from "../components/PostCard";
 import ApiService from "../../services/api";
 import {
   ArrowLeft,
   MapPin,
   Building2,
-  GraduationCap,
-  Briefcase,
-  Award,
-  TrendingUp,
-  Users,
   Star,
-  BookOpen,
-  MessageSquare,
   Plus,
   Pencil,
   Camera,
@@ -29,29 +23,32 @@ import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { username } = useParams(); // Changed from id to username
   const location = useLocation();
   const { user: authUser, updateProfile } = useAuth();
-  const config = DASHBOARD_CONFIG[userType];
-  const profile = config.leftSidebar.profile;
+  const config = DASHBOARD_CONFIG[userType] || DASHBOARD_CONFIG[USER_TYPES.STUDENT];
+  const profile = config?.leftSidebar?.profile || { avatar: "", name: "User" };
 
   // State for edit modal, profiles and posts
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showAllPosts, setShowAllPosts] = useState(false);
+  const [hireInterestSent, setHireInterestSent] = useState(false);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // Determine if viewing own profile
-  const isOwnProfile = !id;
+  const isOwnProfile = !username || username === authUser?.username;
 
   const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await ApiService.getUserProfile(id);
+      const response = await ApiService.getUserProfile(username); // username can be undefined for own profile
       if (response.success) {
         setProfileData(response.data);
       }
@@ -60,7 +57,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [username]);
 
   useEffect(() => {
     loadProfile();
@@ -71,19 +68,23 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       setPostsLoading(true);
       let response;
 
-      if (id) {
-        // Load posts for specific trainer by ID
-        response = await ApiService.getPosts({
-          authorId: id,
-          page: 1,
-          limit: 10,
-        });
+      if (username) {
+        // Load posts for specific user by username
+        // First get user ID from username
+        const profileResp = await ApiService.getUserProfile(username);
+        if (profileResp.success && profileResp.data) {
+          response = await ApiService.getPosts({
+            authorId: profileResp.data.id,
+            page: 1,
+            limit: 10,
+          });
+        }
       } else {
         // Load current user's posts (for own profile)
         response = await ApiService.getMyPosts({ page: 1, limit: 10 });
       }
 
-      if (response.success) {
+      if (response && response.success) {
         // Normalize image URLs and profile pictures
         const normalizedPosts = (response.data || []).map((post) => ({
           ...post,
@@ -99,7 +100,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   ? post.author.profilePicture.startsWith("http")
                     ? post.author.profilePicture
                     : `${BACKEND_URL}${post.author.profilePicture}`
-                  : null,
+                  : // Fallback to profile data avatar if viewing same user's posts
+                    profileData && post.author.id === profileData.id
+                    ? profileData.profilePicture || profileData.avatar
+                    : null,
               }
             : null,
         }));
@@ -110,7 +114,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     } finally {
       setPostsLoading(false);
     }
-  }, [id, BACKEND_URL]);
+  }, [username, BACKEND_URL]);
 
   // Load posts when component mounts, ID changes, or when navigating back to profile
   useEffect(() => {
@@ -165,6 +169,24 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           : post,
       ),
     );
+  };
+
+  const handleHireInterest = async () => {
+    if (!profileData?.id) return;
+    
+    try {
+      const response = await ApiService.expressHireInterest(profileData.id);
+      if (response.success) {
+        setHireInterestSent(true);
+        setSaveSuccess(true);
+        // Reset success message after 3 seconds
+        setTimeout(() => {
+          setHireInterestSent(false);
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Failed to send hire interest:", error);
+    }
   };
 
   // Profile data mapped from backend fields
@@ -346,7 +368,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         <div className="max-w-5xl mx-auto mt-4 px-6">
           <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-emerald-500 text-sm flex items-center gap-2">
             <CheckCircle2 size={18} />
-            Profile updated successfully!
+            {hireInterestSent 
+              ? "Hire interest sent successfully! The trainer will be notified." 
+              : "Profile updated successfully!"}
           </div>
         </div>
       )}
@@ -404,30 +428,42 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               {isOwnProfile ? (
                 <>
                   <button
-                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
-                  >
-                    {isInstitute ? "Follow" : "Connect"}
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
-                  >
-                    Message
-                  </button>
-                  <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className={`p-2 rounded-lg ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
+                    className={`flex items-center gap-2 px-6 py-2 rounded-full font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 shadow-md`}
                   >
-                    <Pencil size={20} />
+                    <Pencil size={18} />
+                    Edit Profile
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
+                  >
+                    View as Public
                   </button>
                 </>
               ) : (
                 <>
+                  {/* Show Hire button only when institution views trainer profile */}
+                  {isInstitute && profileData?.role === "TRAINER" ? (
+                    <button
+                      onClick={handleHireInterest}
+                      disabled={hireInterestSent}
+                      className={`px-4 py-2 rounded-full font-medium ${
+                        hireInterestSent 
+                          ? "bg-emerald-500 text-white cursor-not-allowed" 
+                          : `${theme.accentBg} text-white hover:opacity-90`
+                      } transition-all duration-300`}
+                    >
+                      {hireInterestSent ? "Interest Sent ✓" : "Hire"}
+                    </button>
+                  ) : (
+                    <button
+                      className={`px-4 py-2 rounded-full font-medium ${theme.accentBg} text-white hover:opacity-90 transition-all duration-300`}
+                    >
+                      {isInstitute ? "Follow" : "Connect"}
+                    </button>
+                  )}
                   <button
-                    className={`px-4 py-2 rounded-full font-medium ${theme.accentBg} text-white hover:opacity-90 transition-all duration-300`}
-                  >
-                    {isInstitute ? "Follow" : "Connect"}
-                  </button>
-                  <button
+                    onClick={() => setIsMessageModalOpen(true)}
                     className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
                   >
                     Message
@@ -616,37 +652,63 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                     <p className="mt-1">Posts shared will be displayed here.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {posts.map((post) => (
-                      <PostCard
-                        key={post.id}
-                        post={post}
-                        user={{ id: id || authUser?.id }} // Pass the trainer ID
-                        isLiked={false}
-                        isSaved={false}
-                        showComments={false}
-                        commentInput=""
-                        onLike={() => console.log("Like post:", post.id)}
-                        onSave={() => console.log("Save post:", post.id)}
-                        onShare={() => console.log("Share post:", post.id)}
-                        onComment={() =>
-                          console.log("Comment on post:", post.id)
-                        }
-                        onSubmitComment={() => console.log("Submit comment")}
-                        onToggleComments={() => console.log("Toggle comments")}
-                        onDelete={handleDeletePost}
-                        onEdit={handleEditPost}
-                        isOwnProfile={isOwnProfile} // True if viewing own profile, false if viewing other trainer's profile
-                        onReviewUpdate={handleReviewUpdate}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="space-y-4">
+                      {(showAllPosts ? posts : posts.slice(0, 1)).map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          user={{ id: profileData?.id || authUser?.id }} // Pass the user ID
+                          isLiked={false}
+                          isSaved={false}
+                          showComments={false}
+                          commentInput=""
+                          onLike={() => console.log("Like post:", post.id)}
+                          onSave={() => console.log("Save post:", post.id)}
+                          onShare={() => console.log("Share post:", post.id)}
+                          onComment={() =>
+                            console.log("Comment on post:", post.id)
+                          }
+                          onSubmitComment={() => console.log("Submit comment")}
+                          onToggleComments={() => console.log("Toggle comments")}
+                          onDelete={handleDeletePost}
+                          onEdit={handleEditPost}
+                          isOwnProfile={isOwnProfile} // True if viewing own profile, false if viewing other trainer's profile
+                          onReviewUpdate={handleReviewUpdate}
+                        />
+                      ))}
+                    </div>
+                    
+                    {/* Show all posts button */}
+                    {posts.length > 1 && (
+                      <button
+                        onClick={() => setShowAllPosts(!showAllPosts)}
+                        className={`w-full mt-4 py-3 rounded-lg font-medium text-sm ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-300 flex items-center justify-center gap-2`}
+                      >
+                        {showAllPosts ? (
+                          <>
+                            Show less
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
+                          </>
+                        ) : (
+                          <>
+                            Show all {posts.length} posts
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
 
-            {/* Experience - Only for Trainer & Institute */}
-            {isTrainer && (
+            {/* Experience - Only for Trainer */}
+            {isTrainer && (data.experience || []).length > 0 && (
               <div
                 className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
               >
@@ -662,7 +724,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 </div>
 
                 <div className="space-y-4">
-                  {data.experience.map((exp, index) => (
+                  {(data.experience || []).map((exp, index) => (
                     <div key={index} className="flex gap-3">
                       <img
                         src={exp.logo}
@@ -705,7 +767,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 </div>
 
                 <div className="space-y-4">
-                  {data.programs.map((prog, index) => (
+                  {(data.programs || []).map((prog, index) => (
                     <div
                       key={index}
                       className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
@@ -730,7 +792,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             )}
 
             {/* Education - Only for Student & Trainer */}
-            {!isInstitute && data.education.length > 0 && (
+            {!isInstitute && (data.education || []).length > 0 && (
               <div
                 className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
               >
@@ -753,7 +815,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 </div>
 
                 <div className="space-y-4">
-                  {data.education.map((edu, index) => (
+                  {(data.education || []).map((edu, index) => (
                     <div key={index} className="flex gap-3">
                       <img
                         src={edu.logo}
@@ -777,68 +839,72 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               </div>
             )}
 
-            {/* Skills */}
-            <div
-              className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
-                  Skills
-                </h2>
-                <button
-                  className={`px-3 py-1.5 rounded-full border ${theme.cardBorder} ${theme.accentColor} font-medium text-sm hover:${theme.hoverBg} transition-all duration-300`}
-                >
-                  Add skills
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {data.skills.map((skill, index) => (
-                  <span
-                    key={index}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                      isStudent
-                        ? "bg-blue-500/10 text-blue-500"
-                        : isTrainer
-                          ? "bg-emerald-500/10 text-emerald-500"
-                          : "bg-purple-500/10 text-purple-500"
-                    }`}
+            {/* Skills - Only for Trainer */}
+            {isTrainer && (data.skills || []).length > 0 && (
+              <div
+                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
+                    Skills
+                  </h2>
+                  <button
+                    className={`px-3 py-1.5 rounded-full border ${theme.cardBorder} ${theme.accentColor} font-medium text-sm hover:${theme.hoverBg} transition-all duration-300`}
                   >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
+                    Add skills
+                  </button>
+                </div>
 
-            {/* Interests */}
-            <div
-              className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
-            >
-              <h2 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
-                Interests
-              </h2>
-              <div className="flex gap-3">
-                <button
-                  className={`px-4 py-2 rounded-full text-sm font-medium bg-emerald-600 text-white`}
-                >
-                  {isStudent
-                    ? "Top Voices"
-                    : isTrainer
-                      ? "Companies"
-                      : "Students"}
-                </button>
-                <button
-                  className={`px-4 py-2 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300`}
-                >
-                  Companies
-                </button>
-                <button
-                  className={`px-4 py-2 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300`}
-                >
-                  Groups
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {(data.skills || []).map((skill, index) => (
+                    <span
+                      key={index}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                        isStudent
+                          ? "bg-blue-500/10 text-blue-500"
+                          : isTrainer
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : "bg-purple-500/10 text-purple-500"
+                      }`}
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Interests - Only for Trainer */}
+            {isTrainer && (
+              <div
+                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
+              >
+                <h2 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
+                  Interests
+                </h2>
+                <div className="flex gap-3">
+                  <button
+                    className={`px-4 py-2 rounded-full text-sm font-medium bg-emerald-600 text-white`}
+                  >
+                    {isStudent
+                      ? "Top Voices"
+                      : isTrainer
+                        ? "Companies"
+                        : "Students"}
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300`}
+                  >
+                    Companies
+                  </button>
+                  <button
+                    className={`px-4 py-2 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300`}
+                  >
+                    Groups
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Sidebar */}
@@ -1020,6 +1086,13 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         userType={userType}
         profileData={data}
         onSave={handleSaveProfile}
+      />
+
+      {/* Direct Message Modal */}
+      <DirectMessageModal
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        recipient={profileData}
       />
     </div>
   );

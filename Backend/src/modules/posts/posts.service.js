@@ -51,6 +51,7 @@ export const getPostsService = async (filters = {}) => {
         select: {
           id: true,
           email: true,
+          username: true,
           firstName: true,
           lastName: true,
           role: true,
@@ -114,6 +115,7 @@ export const getMyPostsService = async (userId, filters = {}) => {
         select: {
           id: true,
           email: true,
+          username: true,
           firstName: true,
           lastName: true,
           role: true,
@@ -169,6 +171,7 @@ export const getPostByIdService = async (postId) => {
         select: {
           id: true,
           email: true,
+          username: true,
           firstName: true,
           lastName: true,
           role: true,
@@ -412,3 +415,4 @@ export const getPostReviewsService = async (postId) => {
     return reviews;
   });
 };
+

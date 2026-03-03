@@ -7,9 +7,9 @@ const API_BASE = import.meta.env.VITE_API_URL
     : "http://localhost:5000/api/v1";
 
 class ApiService {
-  /* ================= CORE REQUEST ================= */
+  /* ================= CORE REQUEST WITH RETRY ================= */
 
-  static async request(endpoint, options = {}) {
+  static async request(endpoint, options = {}, retryCount = 0) {
     const token = localStorage.getItem("token");
 
     const config = {
@@ -31,7 +31,24 @@ class ApiService {
 
       const data = await response.json().catch(() => ({}));
 
+      // Handle 429 (Too Many Requests) with exponential backoff
+      if (response.status === 429 && retryCount < 3) {
+        const retryAfter = response.headers.get('Retry-After');
+        const waitTime = retryAfter 
+          ? parseInt(retryAfter) * 1000 
+          : Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+
+        console.log(`Rate limited. Retrying after ${waitTime}ms...`);
+        
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return this.request(endpoint, options, retryCount + 1);
+      }
+
       if (!response.ok) {
+        // Provide user-friendly error messages
+        if (response.status === 429) {
+          throw new Error("Too many requests. Please wait a moment and try again.");
+        }
         throw new Error(
           data.message || data.error || `Error ${response.status}`,
         );
@@ -381,6 +398,10 @@ class ApiService {
     return this.request(`/networking/remove/${userId}`, { method: "DELETE" });
   }
 
+  static async expressHireInterest(trainerId) {
+    return this.request(`/networking/hire-interest/${trainerId}`, { method: "POST" });
+  }
+
   /* ================= MESSAGING ================= */
 
   static async createConversation(data) {
@@ -430,6 +451,91 @@ class ApiService {
 
   static async deleteNotification(notificationId) {
     return this.request(`/notifications/${notificationId}`, { method: "DELETE" });
+  }
+
+  /* ================= ADMIN ================= */
+  // Backend: GET /admin/users, PATCH /admin/users/:id/verify, PATCH /admin/users/:id/ban
+  // GET /admin/reports, PATCH /admin/reports/:id/action, GET /admin/analytics
+
+  static async getAdminUsers(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/admin/users${params ? `?${params}` : ""}`);
+  }
+
+  static async verifyUser(userId, verified = true) {
+    return this.request(`/admin/users/${userId}/verify`, {
+      method: "PATCH",
+      body: JSON.stringify({ verified }),
+    });
+  }
+
+  static async banUser(userId, banned = true, reason) {
+    return this.request(`/admin/users/${userId}/ban`, {
+      method: "PATCH",
+      body: JSON.stringify({ banned, reason }),
+    });
+  }
+
+  static async getAdminReports(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/admin/reports${params ? `?${params}` : ""}`);
+  }
+
+  static async takeReportAction(reportId, data) {
+    return this.request(`/admin/reports/${reportId}/action`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async getAdminAnalytics() {
+    return this.request("/admin/analytics");
+  }
+
+  /* ================= EMAIL VERIFICATION ================= */
+
+  static async sendVerificationOTP(data) {
+    return this.request("/auth/send-verification-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async verifyEmail(data) {
+    return this.request("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async resendVerificationOTP(data) {
+    return this.request("/auth/resend-verification-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /* ================= PASSWORD RESET ================= */
+
+  static async forgotPassword(data) {
+    return this.request("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async verifyResetOTP(data) {
+    return this.request("/auth/verify-reset-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async resetPassword(data) {
+    return this.request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
   /* ================= OPTIONAL (not in backend - return empty to avoid errors) ================= */

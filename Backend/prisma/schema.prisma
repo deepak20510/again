@@ -46,10 +46,12 @@ enum ReportTargetType {
 model User {
   id             String    @id @default(uuid())
   email          String    @unique
+  username       String    @unique
   password       String
   firstName      String?
   lastName       String?
   profilePicture String?
+  coverImage     String?
   bio            String?
   headline       String?
   location       String?
@@ -57,7 +59,13 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   isActive       Boolean   @default(true)
+  isVerified     Boolean   @default(false)
+  isBanned       Boolean   @default(false)
   deletedAt      DateTime?
+  
+  // Password reset fields
+  resetPasswordOTP        String?
+  resetPasswordOTPExpires DateTime?
 
   trainerProfile     TrainerProfile?
   institutionProfile InstitutionProfile?
@@ -74,6 +82,9 @@ model User {
   receivedConnections Connection[]   @relation("ReceivedConnections")
   conversations       Conversation[] @relation("UserConversations")
   messages            Message[]
+
+  @@index([username])
+  @@index([email])
 }
 
 

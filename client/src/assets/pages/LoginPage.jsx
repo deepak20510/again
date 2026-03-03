@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Eye,
   EyeOff,
@@ -219,12 +219,12 @@ export default function LoginPage() {
                 <label className="block text-sm font-medium text-gray-700">
                   Password
                 </label>
-                <a
-                  href="#"
+                <Link
+                  to="/forgot-password"
                   className="text-sm text-blue-600 hover:underline font-medium"
                 >
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <input

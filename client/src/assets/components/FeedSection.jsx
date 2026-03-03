@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -18,17 +18,24 @@ import {
   Image,
   Link2,
   Video,
+  Loader2,
 } from "lucide-react";
 import PostCard from "./PostCard";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const POSTS_PER_PAGE = 5;
+
 export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
   const { user } = useAuth();
   const { theme } = useTheme();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [sortType, setSortType] = useState("recent");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const observerTarget = useRef(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [postText, setPostText] = useState("");
@@ -45,8 +52,30 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
   /* ================= LOAD POSTS ================= */
 
   useEffect(() => {
-    loadPosts();
+    loadPosts(1, true); // Load first page on mount
   }, []);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMorePosts();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loading, loadingMore, page]);
 
   // Listen for custom events to open create post modal
   useEffect(() => {
@@ -64,154 +93,168 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
     };
   }, []);
 
-  const loadPosts = async () => {
-    setLoading(true);
-    try {
-      const response = await ApiService.getPosts?.();
-      if (response?.success) {
-        const normalizedPosts = (response.data || []).map((post) => ({
-          ...post,
-          imageUrl: post.imageUrl
-            ? post.imageUrl.startsWith("http")
-              ? post.imageUrl
-              : `${BACKEND_URL}${post.imageUrl}`
-            : null,
-          author: post.author ? {
-            ...post.author,
-            profilePicture: post.author.profilePicture
-              ? post.author.profilePicture.startsWith("http")
-                ? post.author.profilePicture
-                : `${BACKEND_URL}${post.author.profilePicture}`
-              : null,
-          } : null,
-        }));
+  const loadPosts = async (pageNum = 1, reset = false) => {
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
 
-        setPosts(normalizedPosts);
+    try {
+      const response = await ApiService.getPosts?.({
+        page: pageNum,
+        limit: POSTS_PER_PAGE,
+        sortBy: sortType === "top" ? "averageRating" : "createdAt",
+        sortOrder: "desc"
+      });
+
+      if (response?.success) {
+        const normalizedPosts = (response.data || []).map((post) => {
+          const normalizeImageUrl = (url) => {
+            if (!url) return null;
+            // If it's already a full URL (http/https) or a data URL, return as-is
+            if (url.startsWith("http") || url.startsWith("data:")) return url;
+            // Otherwise, prepend backend URL
+            return `${BACKEND_URL}${url}`;
+          };
+
+          return {
+            ...post,
+            imageUrl: normalizeImageUrl(post.imageUrl),
+            author: post.author ? {
+              ...post.author,
+              // Use profilePicture, or fall back to avatar field if it exists
+              profilePicture: normalizeImageUrl(post.author.profilePicture || post.author.avatar),
+              // Also set avatar for backward compatibility
+              avatar: post.author.profilePicture || post.author.avatar || null,
+            } : null,
+          };
+        });
+
+        if (reset) {
+          setPosts(normalizedPosts);
+        } else {
+          setPosts(prev => [...prev, ...normalizedPosts]);
+        }
+
+        // Check if there are more posts
+        setHasMore(normalizedPosts.length === POSTS_PER_PAGE);
+        setPage(pageNum);
       } else {
-        // Add mock data for demonstration
-        setPosts([
-          {
-            id: 1,
-            content:
-              "Just completed an amazing course on React Hooks! The way useState and useEffect work together is fascinating. Highly recommend it to anyone looking to level up their React skills. 🚀\n\n#React #WebDevelopment #Learning",
-            author: {
-              name: "Sarah Johnson",
-              headline: "Frontend Developer",
-              title: "Senior Developer",
-              profilePicture: null,
-            },
-            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-            likes: 24,
-            commentCount: 8,
-            shares: 3,
-            comments: [
-              {
-                id: 101,
-                content:
-                  "Great choice! React Hooks really changed the game for component composition.",
-                author: {
-                  name: "Mike Chen",
-                  profilePicture: null,
-                },
-                createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        // Add mock data for demonstration only on first load
+        if (reset) {
+          setPosts([
+            {
+              id: 1,
+              content:
+                "Just completed an amazing course on React Hooks! The way useState and useEffect work together is fascinating. Highly recommend it to anyone looking to level up their React skills. 🚀\n\n#React #WebDevelopment #Learning",
+              author: {
+                name: "Sarah Johnson",
+                headline: "Frontend Developer",
+                title: "Senior Developer",
+                profilePicture: null,
               },
-              {
-                id: 102,
-                content:
-                  "I'm taking this course too! The useEffect cleanup patterns are mind-blowing.",
-                author: {
-                  name: "Emily Davis",
-                  profilePicture: null,
-                },
-                createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+              createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+              likes: 24,
+              commentCount: 8,
+              shares: 3,
+              comments: [],
+            },
+            {
+              id: 2,
+              content:
+                "🎯 Career milestone: Just landed my first frontend developer role! Thank you to this amazing community for all the support and resources. The journey from bootcamp to professional has been incredible.\n\nSpecial shoutout to everyone who reviewed my portfolio and gave feedback. You know who you are! 🙏",
+              author: {
+                name: "Alex Rodriguez",
+                headline: "Frontend Developer",
+                title: "Junior Developer",
+                profilePicture: null,
               },
-            ],
-          },
-          {
-            id: 2,
-            content:
-              "🎯 Career milestone: Just landed my first frontend developer role! Thank you to this amazing community for all the support and resources. The journey from bootcamp to professional has been incredible.\n\nSpecial shoutout to everyone who reviewed my portfolio and gave feedback. You know who you are! 🙏",
-            author: {
-              name: "Alex Rodriguez",
-              headline: "Frontend Developer",
-              title: "Junior Developer",
-              profilePicture: null,
+              createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+              likes: 156,
+              commentCount: 42,
+              shares: 18,
+              comments: [],
             },
-            createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-            likes: 156,
-            commentCount: 42,
-            shares: 18,
-            comments: [
-              {
-                id: 201,
-                content: "Congratulations! 🎉 Your hard work paid off!",
-                author: {
-                  name: "Lisa Wang",
-                  profilePicture: null,
-                },
-                createdAt: new Date(
-                  Date.now() - 2 * 60 * 60 * 1000,
-                ).toISOString(),
+            {
+              id: 3,
+              content:
+                "Hot take: CSS-in-JS is not always the answer. Sometimes plain CSS with good naming conventions is more maintainable and performant. Fight me! 😄",
+              author: {
+                name: "David Kim",
+                headline: "Full Stack Engineer",
+                title: "Tech Lead",
+                profilePicture: null,
               },
-            ],
-          },
-          {
-            id: 3,
-            content:
-              "Hot take: CSS-in-JS is not always the answer. Sometimes plain CSS with good naming conventions is more maintainable and performant. Fight me! 😄",
-            author: {
-              name: "David Kim",
-              headline: "Full Stack Engineer",
-              title: "Tech Lead",
-              profilePicture: null,
+              createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+              likes: 89,
+              commentCount: 31,
+              shares: 12,
+              imageUrl:
+                "https://via.placeholder.com/800x400?text=CSS+vs+CSS-in-JS",
             },
-            createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-            likes: 89,
-            commentCount: 31,
-            shares: 12,
-            imageUrl:
-              "https://via.placeholder.com/800x400?text=CSS+vs+CSS-in-JS",
-          },
-          {
-            id: 4,
-            content:
-              "Pro tip: Use console.table() instead of console.log() when debugging arrays of objects. It's a game-changer for readability! 📊\n\nExample: console.table(usersArray) will give you a nice formatted table.",
-            author: {
-              name: "Rachel Green",
-              headline: "JavaScript Enthusiast",
-              title: "Senior Developer",
-              profilePicture: null,
+            {
+              id: 4,
+              content:
+                "Pro tip: Use console.table() instead of console.log() when debugging arrays of objects. It's a game-changer for readability! 📊\n\nExample: console.table(usersArray) will give you a nice formatted table.",
+              author: {
+                name: "Rachel Green",
+                headline: "JavaScript Enthusiast",
+                title: "Senior Developer",
+                profilePicture: null,
+              },
+              createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+              likes: 234,
+              commentCount: 19,
+              shares: 45,
             },
-            createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-            likes: 234,
-            commentCount: 19,
-            shares: 45,
-          },
-        ]);
+          ]);
+          setHasMore(false);
+        }
       }
     } catch (error) {
       console.error("Failed to load posts:", error);
-      // Add mock data as fallback
-      setPosts([
-        {
-          id: 1,
-          content: "Welcome to our learning community! 🎓",
-          author: {
-            name: "Admin",
-            headline: "Community Manager",
-            title: "Admin",
-            profilePicture: null,
+      // Add mock data as fallback only on first load
+      if (reset) {
+        setPosts([
+          {
+            id: 1,
+            content: "Welcome to our learning community! 🎓",
+            author: {
+              name: "Admin",
+              headline: "Community Manager",
+              title: "Admin",
+              profilePicture: null,
+            },
+            createdAt: new Date().toISOString(),
+            likes: 10,
+            commentCount: 2,
+            shares: 1,
           },
-          createdAt: new Date().toISOString(),
-          likes: 10,
-          commentCount: 2,
-          shares: 1,
-        },
-      ]);
+        ]);
+        setHasMore(false);
+      }
     } finally {
-      setLoading(false);
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
   };
+
+  const loadMorePosts = useCallback(() => {
+    if (!hasMore || loading || loadingMore) return;
+    loadPosts(page + 1, false);
+  }, [page, hasMore, loading, loadingMore]);
+
+  // Reset and reload when sort type changes
+  useEffect(() => {
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
+    loadPosts(1, true);
+  }, [sortType]);
 
   /* ================= CREATE POST ================= */
 
@@ -247,10 +290,8 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
           throw new Error("Upload failed");
         }
 
-        const BACKEND_URL =
-          import.meta.env.VITE_API_URL || "http://localhost:5000";
-
-        imageUrl = `${BACKEND_URL}/materials/${uploadResponse.data.filename}`;
+        // Use the Cloudinary URL directly from response
+        imageUrl = uploadResponse.data.url;
       }
 
       /* ========= POST DATA ========= */
@@ -287,7 +328,11 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
       setImagePreview(null);
       setIsModalOpen(false);
 
-      await loadPosts();
+      // Reset pagination and reload from first page
+      setPosts([]);
+      setPage(1);
+      setHasMore(true);
+      await loadPosts(1, true);
 
       // Refresh posts in profile page if trainer is viewing their own profile
       window.dispatchEvent(new CustomEvent("refreshPosts"));
@@ -559,31 +604,52 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
           <p className={`text-sm ${theme.textMuted}`}>Be the first to share something!</p>
         </div>
       ) : (
-        sortedPosts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            user={user}
-            isLiked={likedPosts.has(post.id)}
-            isSaved={savedPosts.has(post.id)}
-            showComments={showComments[post.id]}
-            commentInput={commentInputs[post.id] || ""}
-            onLike={() => handleLike(post.id)}
-            onSave={() => handleSave(post.id)}
-            onShare={() => handleShare(post.id)}
-            onComment={(text) =>
-              setCommentInputs((prev) => ({ ...prev, [post.id]: text }))
-            }
-            onSubmitComment={() => handleComment(post.id)}
-            onToggleComments={() =>
-              setShowComments((prev) => ({
-                ...prev,
-                [post.id]: !prev[post.id],
-              }))
-            }
-            onReviewUpdate={handleReviewUpdate}
-          />
-        ))
+        <>
+          {sortedPosts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              user={user}
+              isLiked={likedPosts.has(post.id)}
+              isSaved={savedPosts.has(post.id)}
+              showComments={showComments[post.id]}
+              commentInput={commentInputs[post.id] || ""}
+              onLike={() => handleLike(post.id)}
+              onSave={() => handleSave(post.id)}
+              onShare={() => handleShare(post.id)}
+              onComment={(text) =>
+                setCommentInputs((prev) => ({ ...prev, [post.id]: text }))
+              }
+              onSubmitComment={() => handleComment(post.id)}
+              onToggleComments={() =>
+                setShowComments((prev) => ({
+                  ...prev,
+                  [post.id]: !prev[post.id],
+                }))
+              }
+              onReviewUpdate={handleReviewUpdate}
+            />
+          ))}
+
+          {/* Infinite Scroll Trigger */}
+          <div ref={observerTarget} className="py-4">
+            {loadingMore && (
+              <div className="flex justify-center items-center gap-2">
+                <Loader2 className={`w-5 h-5 animate-spin ${theme.accentColor}`} />
+                <span className={`text-sm ${theme.textMuted}`}>Loading more posts...</span>
+              </div>
+            )}
+            {!hasMore && posts.length > 0 && (
+              <div className={`text-center text-sm ${theme.textMuted} py-4`}>
+                <div className="flex items-center justify-center gap-2">
+                  <div className={`h-px flex-1 ${theme.divider} bg-gray-300 dark:bg-gray-700`}></div>
+                  <span>You've reached the end</span>
+                  <div className={`h-px flex-1 ${theme.divider} bg-gray-300 dark:bg-gray-700`}></div>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* ================= CREATE POST MODAL ================= */}

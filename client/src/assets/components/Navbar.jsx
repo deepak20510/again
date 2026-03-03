@@ -171,9 +171,12 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
   };
 
   const getProfileRoute = () => {
-    if (userType === USER_TYPES.STUDENT) return "/student/profile";
-    if (userType === USER_TYPES.TRAINER) return "/trainer/profile";
-    return "/institute/profile";
+    const username = user?.username;
+    if (!username) return "/student/profile"; // Fallback if no username
+    
+    if (userType === USER_TYPES.STUDENT) return `/student/profile/${username}`;
+    if (userType === USER_TYPES.TRAINER) return `/trainer/profile/${username}`;
+    return `/institute/profile/${username}`;
   };
 
   const getDashboardRoute = () => {

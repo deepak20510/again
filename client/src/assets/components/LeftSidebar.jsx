@@ -13,6 +13,27 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
   const { user: authUser } = useAuth();
   const [currentProfile, setCurrentProfile] = useState(profile);
 
+  // Sync with AuthContext user changes on mount and when authUser changes
+  useEffect(() => {
+    if (authUser) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCurrentProfile((prev) => {
+        const newName = authUser.name || authUser.firstName || prev.name;
+        const newAvatar = authUser.avatar || authUser.profilePicture || prev.avatar;
+        
+        // Only update if values actually changed
+        if (newName !== prev.name || newAvatar !== prev.avatar) {
+          return {
+            ...prev,
+            name: newName,
+            avatar: newAvatar,
+          };
+        }
+        return prev;
+      });
+    }
+  }, [authUser]);
+
   // Listen for profile updates from ProfilePage
   useEffect(() => {
     const handleProfileUpdate = (event) => {
@@ -30,24 +51,16 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
     return () => window.removeEventListener("profileUpdated", handleProfileUpdate);
   }, []);
 
-  // Also sync with AuthContext user changes
-  useEffect(() => {
-    if (authUser) {
-      setCurrentProfile((prev) => ({
-        ...prev,
-        name: authUser.name || authUser.firstName || prev.name,
-        avatar: authUser.avatar || authUser.profilePicture || prev.avatar,
-      }));
-    }
-  }, [authUser]);
-
   const handleProfileClick = () => {
+    const username = authUser?.username;
+    if (!username) return; // Don't navigate if no username
+    
     if (userType === USER_TYPES.STUDENT) {
-      navigate("/student/profile");
+      navigate(`/student/profile/${username}`);
     } else if (userType === USER_TYPES.TRAINER) {
-      navigate("/trainer/profile");
+      navigate(`/trainer/profile/${username}`);
     } else if (userType === USER_TYPES.INSTITUTE) {
-      navigate("/institute/profile");
+      navigate(`/institute/profile/${username}`);
     }
   };
 

@@ -129,6 +129,7 @@ export default function SignupPage() {
 
       const response = await signup(signupData);
 
+      // Verification is optional - proceed to dashboard directly
       const userRole = response.data?.user?.role?.toLowerCase();
 
       const roleRoutes = {

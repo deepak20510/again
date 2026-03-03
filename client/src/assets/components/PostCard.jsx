@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Heart,
   MessageCircle,
@@ -22,27 +23,28 @@ import ApiService from "../../services/api";
 export default function PostCard({
   post,
   user,
-  isLiked,
+  // isLiked, // Unused
   isSaved,
   showComments,
   commentInput,
-  onLike,
+  // onLike, // Unused
   onSave,
   onShare,
   onComment,
   onSubmitComment,
-  onToggleComments,
+  // onToggleComments, // Unused
   onDelete,
   onEdit,
   isOwnProfile = false,
   onReviewUpdate,
 }) {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
-  const [userReview, setUserReview] = useState(null);
+  const [userReview] = useState(null);
   const [allReviews, setAllReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
 
@@ -56,7 +58,7 @@ export default function PostCard({
         // Update parent component's post data
         onReviewUpdate?.(post.id, { averageRating, totalReviews });
       }
-      
+        
       // Reload reviews if modal is open
       if (showReviewsModal) {
         loadReviews();
@@ -116,6 +118,14 @@ export default function PostCard({
     return "Anonymous";
   };
 
+  const handleAuthorClick = () => {
+    if (!post.author?.username) return;
+    
+    const role = post.author.role?.toLowerCase();
+    const rolePath = role === "institution" ? "institute" : role;
+    navigate(`/${rolePath}/profile/${post.author.username}`);
+  };
+
   const getAuthorRole = () => {
     if (!post.author) return "Member";
     if (post.author.role === "TRAINER") return "Trainer";
@@ -128,6 +138,7 @@ export default function PostCard({
   const authorName = getAuthorName();
   const authorInitial = authorName.charAt(0).toUpperCase();
   const authorAvatar = post.author?.profilePicture || post.author?.avatar;
+  const [imageError, setImageError] = useState(false);
 
   const isPDF = post.imageUrl?.toLowerCase().endsWith(".pdf") || post.type === "article";
 
@@ -153,13 +164,20 @@ export default function PostCard({
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            {/* Avatar */}
-            <div className="w-11 h-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-              {authorAvatar ? (
+            {/* Avatar - Clickable */}
+            <div 
+              onClick={handleAuthorClick}
+              className="w-11 h-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+            >
+              {authorAvatar && !imageError ? (
                 <img
                   src={authorAvatar}
                   alt={authorName}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('Failed to load avatar:', authorAvatar);
+                    setImageError(true);
+                  }}
                 />
               ) : (
                 <span className="text-white font-bold text-sm">{authorInitial}</span>
@@ -169,7 +187,10 @@ export default function PostCard({
             {/* Author Info */}
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={`font-semibold text-sm ${theme.textPrimary} hover:${theme.accentColor} cursor-pointer transition-colors`}>
+                <h3 
+                  onClick={handleAuthorClick}
+                  className={`font-semibold text-sm ${theme.textPrimary} hover:${theme.accentColor} cursor-pointer transition-colors`}
+                >
                   {authorName}
                 </h3>
                 {post.author?.role === "TRAINER" && (

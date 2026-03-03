@@ -12,6 +12,40 @@ const JWT_OPTIONS = {
   audience: process.env.JWT_AUDIENCE || "trainer-users",
 };
 
+/**
+ * Generate unique username from email
+ * Format: firstname.lastname123 or email-prefix123
+ */
+const generateUsername = async (email, firstName, lastName) => {
+  const emailPrefix = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+  
+  let baseUsername;
+  if (firstName && lastName) {
+    baseUsername = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`.replace(/[^a-z0-9.]/g, "");
+  } else {
+    baseUsername = emailPrefix;
+  }
+
+  // Try base username first
+  let username = baseUsername;
+  let suffix = 0;
+  
+  while (true) {
+    const existing = await client.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    
+    if (!existing) {
+      return username;
+    }
+    
+    // Add random number suffix
+    suffix = Math.floor(Math.random() * 10000);
+    username = `${baseUsername}${suffix}`;
+  }
+};
+
 // ================= SIGNUP SERVICE =================
 export const signupService = async ({ email, password, role, phone, organization }) => {
   console.log("SignupService CALLED with:", { email, role, phone, organization });
@@ -40,10 +74,14 @@ export const signupService = async ({ email, password, role, phone, organization
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
+  // Generate unique username
+  const username = await generateUsername(normalizedEmail, null, null);
+
   const createdUser = await withRetry(async () => {
     return await client.user.create({
       data: {
         email: normalizedEmail,
+        username,
         password: hashedPassword,
         role,
         // Use organization as a headline or name base
@@ -79,6 +117,7 @@ export const signupService = async ({ email, password, role, phone, organization
     select: {
       id: true,
       email: true,
+      username: true,
       role: true,
       firstName: true,
       lastName: true,
@@ -112,6 +151,7 @@ export const signupService = async ({ email, password, role, phone, organization
     user: {
       id: createdUser.id,
       email: createdUser.email,
+      username: createdUser.username,
       role: createdUser.role,
       firstName: createdUser.firstName,
       lastName: createdUser.lastName,
@@ -157,6 +197,8 @@ export const loginService = async ({ email, password }) => {
     throw new AppError("Invalid email or password", 401);
   }
 
+  // Email verification removed - users can login without verification
+
   const token = jwt.sign(
     {
       userId: user.id,
@@ -182,6 +224,7 @@ export const loginService = async ({ email, password }) => {
     user: {
       id: user.id,
       email: user.email,
+      username: user.username,
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,

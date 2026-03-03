@@ -16,6 +16,7 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
     role: "",
     skill: "",
     location: "",
+    search: "", // General search term
     minRating: "",
     minExperience: "",
     maxExperience: "",
@@ -66,6 +67,7 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
       role: "",
       skill: "",
       location: "",
+      search: "",
       minRating: "",
       minExperience: "",
       maxExperience: "",
@@ -123,9 +125,10 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme.textMuted}`} />
               <input
                 type="text"
-                placeholder="Search by location, skills, or name..."
-                value={filters.location}
-                onChange={(e) => handleFilterChange("location", e.target.value)}
+                placeholder="Search by name, skills, location, or bio..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && performSearch()}
                 className={`w-full pl-10 pr-4 py-2.5 ${theme.inputBg} border ${theme.inputBorder} rounded-lg ${theme.inputText} ${theme.inputPlaceholder} focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition`}
               />
             </div>
@@ -178,6 +181,17 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
                 </div>
 
                 <div>
+                  <label className={`block text-xs font-semibold ${theme.textPrimary} mb-2`}>Location</label>
+                  <input
+                    type="text"
+                    value={filters.location}
+                    onChange={(e) => handleFilterChange("location", e.target.value)}
+                    placeholder="City or region"
+                    className={`w-full px-3 py-2 ${theme.inputBg} border ${theme.inputBorder} rounded-lg text-sm ${theme.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+                  />
+                </div>
+
+                <div>
                   <label className={`block text-xs font-semibold ${theme.textPrimary} mb-2`}>Minimum Rating</label>
                   <select
                     value={filters.minRating}
@@ -190,6 +204,34 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
                     <option value="4.5">4.5+ Stars</option>
                   </select>
                 </div>
+
+                {filters.role !== "INSTITUTION" && (
+                  <>
+                    <div>
+                      <label className={`block text-xs font-semibold ${theme.textPrimary} mb-2`}>Min Experience (years)</label>
+                      <input
+                        type="number"
+                        value={filters.minExperience}
+                        onChange={(e) => handleFilterChange("minExperience", e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        className={`w-full px-3 py-2 ${theme.inputBg} border ${theme.inputBorder} rounded-lg text-sm ${theme.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-semibold ${theme.textPrimary} mb-2`}>Max Experience (years)</label>
+                      <input
+                        type="number"
+                        value={filters.maxExperience}
+                        onChange={(e) => handleFilterChange("maxExperience", e.target.value)}
+                        placeholder="Any"
+                        min="0"
+                        className={`w-full px-3 py-2 ${theme.inputBg} border ${theme.inputBorder} rounded-lg text-sm ${theme.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <label className={`block text-xs font-semibold ${theme.textPrimary} mb-2`}>Sort By</label>
@@ -311,6 +353,13 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
                       )}
                     </div>
                   </div>
+
+                  {/* Bio */}
+                  {(result.bio || result.profile?.bio) && (
+                    <p className={`text-sm ${theme.textSecondary} mb-3 line-clamp-2`}>
+                      {result.bio || result.profile?.bio}
+                    </p>
+                  )}
 
                   {result.profile?.skills && result.profile.skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">

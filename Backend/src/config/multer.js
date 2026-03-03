@@ -1,38 +1,30 @@
 import multer from "multer";
-import path from "path";
-import fs from "fs";
-import crypto from "crypto";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOAD_DIR = path.join(__dirname, "../../storage/materials");
-
-try {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-} catch (err) {
-  console.warn("Could not create materials upload dir:", err.message);
-}
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "./cloudinary.js";
 
 const allowedTypes = [
   "application/pdf",
   "image/jpeg",
   "image/png",
+  "image/jpg",
+  "image/webp",
 ];
 
 const fileFilter = (req, file, cb) => {
   if (!allowedTypes.includes(file.mimetype)) {
-    return cb(new Error("Invalid file type"), false);
+    return cb(new Error("Invalid file type. Only PDF, JPEG, PNG, and WebP are allowed."), false);
   }
   cb(null, true);
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = crypto.randomUUID();
-    cb(null, uniqueName + path.extname(file.originalname));
+// Configure Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "materials",
+    allowed_formats: ["pdf", "jpg", "jpeg", "png", "webp"],
+    resource_type: "auto",
+    transformation: [{ quality: "auto" }],
   },
 });
 

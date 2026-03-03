@@ -27,10 +27,15 @@ router.get("/profile", authMiddleware(), async (req, res) => {
     }
 });
 
-router.get("/profile/:id", authMiddleware(), async (req, res) => {
+router.get("/profile/:identifier", authMiddleware(), async (req, res) => {
     try {
+        const { identifier } = req.params;
+        
+        // Check if identifier is a UUID or username
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        
         const user = await client.user.findUnique({
-            where: { id: req.params.id },
+            where: isUUID ? { id: identifier } : { username: identifier },
             include: {
                 trainerProfile: true,
                 institutionProfile: true,
@@ -54,28 +59,91 @@ router.put("/profile", authMiddleware(), async (req, res) => {
     try {
         const userId = req.user.id;
         const {
-            firstName, lastName, profilePicture, bio, headline, location,
-            skills, experienceYears, company, school, degree
+            firstName, lastName, profilePicture, coverImage, bio, headline, location,
+            skills, experience, education
         } = req.body;
 
+        // Validate that profilePicture and coverImage are not base64 data URLs
+        if (profilePicture && profilePicture.startsWith('data:')) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Profile picture must be uploaded to cloud storage first. Please use the file upload feature." 
+            });
+        }
+        if (coverImage && coverImage.startsWith('data:')) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Cover image must be uploaded to cloud storage first. Please use the file upload feature." 
+            });
+        }
+
+        // Update user basic info
         const updatedUser = await client.user.update({
             where: { id: userId },
             data: {
                 firstName,
                 lastName,
                 profilePicture,
+                coverImage,
                 bio,
                 headline,
                 location
             }
         });
 
+        // Handle experience updates
+        if (experience && Array.isArray(experience)) {
+            // Delete existing experience
+            await client.experience.deleteMany({
+                where: { userId }
+            });
+
+            // Create new experience entries
+            if (experience.length > 0) {
+                await client.experience.createMany({
+                    data: experience.map(exp => ({
+                        userId,
+                        title: exp.title,
+                        company: exp.company,
+                        location: exp.location || null,
+                        startDate: exp.startDate ? new Date(exp.startDate) : null,
+                        endDate: exp.endDate ? new Date(exp.endDate) : null,
+                        isCurrent: exp.isCurrent || false,
+                        description: exp.description || null
+                    }))
+                });
+            }
+        }
+
+        // Handle education updates
+        if (education && Array.isArray(education)) {
+            // Delete existing education
+            await client.education.deleteMany({
+                where: { userId }
+            });
+
+            // Create new education entries
+            if (education.length > 0) {
+                await client.education.createMany({
+                    data: education.map(edu => ({
+                        userId,
+                        school: edu.school,
+                        degree: edu.degree || null,
+                        fieldOfStudy: edu.fieldOfStudy || null,
+                        startDate: edu.startDate ? new Date(edu.startDate) : null,
+                        endDate: edu.endDate ? new Date(edu.endDate) : null,
+                        description: edu.description || null
+                    }))
+                });
+            }
+        }
+
         // Handle role specific profile updates
         if (req.user.role === "TRAINER") {
             await client.trainerProfile.upsert({
                 where: { userId },
                 update: { bio, location, skills: skills || [] },
-                create: { userId, bio, location, skills: skills || [], experience: experienceYears || 0 }
+                create: { userId, bio, location, skills: skills || [], experience: 0 }
             });
         } else if (req.user.role === "STUDENT") {
             await client.studentProfile.upsert({
@@ -86,14 +154,33 @@ router.put("/profile", authMiddleware(), async (req, res) => {
         } else if (req.user.role === "INSTITUTION") {
             await client.institutionProfile.upsert({
                 where: { userId },
-                update: { location, bio }, // Bio maps to many things
-                create: { userId, name: firstName || "Institution", location: location || "Not specified" }
+                update: { 
+                    name: firstName || "Institution",
+                    location: location || "Not specified" 
+                },
+                create: { 
+                    userId, 
+                    name: firstName || "Institution", 
+                    location: location || "Not specified" 
+                }
             });
         }
 
+        // Fetch updated user with all relations
+        const completeUser = await client.user.findUnique({
+            where: { id: userId },
+            include: {
+                trainerProfile: true,
+                institutionProfile: true,
+                studentProfile: true,
+                education: true,
+                experience: true
+            }
+        });
 
-        res.json({ success: true, data: updatedUser });
+        res.json({ success: true, data: completeUser });
     } catch (error) {
+        console.error("Profile update error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

@@ -108,11 +108,18 @@ const gracefulShutdown = async (signal) => {
   console.log(`\n${signal} received, closing database connection...`);
   if (healthCheckInterval) clearInterval(healthCheckInterval);
   await disconnect();
-  process.exit(0);
+  
+  // For nodemon restarts, don't exit immediately
+  if (signal === 'SIGUSR2') {
+    process.kill(process.pid, 'SIGUSR2');
+  } else {
+    process.exit(0);
+  }
 };
 
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // Nodemon restart signal
 process.on('beforeExit', async () => {
   if (healthCheckInterval) clearInterval(healthCheckInterval);
   await disconnect();

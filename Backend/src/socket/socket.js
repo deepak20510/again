@@ -5,19 +5,35 @@ import prisma from "../db.js";
 let io;
 
 export const initializeSocket = (server) => {
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:3000",
+    process.env.CLIENT_URL
+  ].filter(Boolean);
+
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
+      origin: allowedOrigins,
       credentials: true,
+      methods: ["GET", "POST"],
     },
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    transports: ['polling', 'websocket'], // Try polling first
+    allowEIO3: true, // Allow Engine.IO v3 clients
   });
+
+  console.log("📡 Socket.io initialized with CORS origins:", allowedOrigins);
 
   // Socket authentication middleware
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     
     if (!token) {
-      return next(new Error("Authentication error"));
+      console.warn("Socket connection attempt without token");
+      return next(new Error("Authentication error: No token provided"));
     }
 
     try {
@@ -28,9 +44,11 @@ export const initializeSocket = (server) => {
       
       socket.userId = decoded.userId;
       socket.userRole = decoded.role;
+      console.log(`✅ Socket authenticated for user: ${socket.userId}`);
       next();
     } catch (err) {
-      next(new Error("Authentication error"));
+      console.error("Socket authentication failed:", err.message);
+      return next(new Error("Authentication error: Invalid token"));
     }
   });
 
@@ -39,6 +57,11 @@ export const initializeSocket = (server) => {
 
     // Join user's personal room for notifications
     socket.join(`user:${socket.userId}`);
+
+    // Handle errors
+    socket.on("error", (error) => {
+      console.error(`Socket error for user ${socket.userId}:`, error);
+    });
 
     // Join conversation room
     socket.on("join_conversation", (conversationId) => {
@@ -80,9 +103,14 @@ export const initializeSocket = (server) => {
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log(`User disconnected: ${socket.userId}`);
+    socket.on("disconnect", (reason) => {
+      console.log(`User disconnected: ${socket.userId}, reason: ${reason}`);
     });
+  });
+
+  // Handle server errors
+  io.engine.on("connection_error", (err) => {
+    console.error("Socket.io connection error:", err.message);
   });
 
   return io;
