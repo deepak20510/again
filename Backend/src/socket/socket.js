@@ -10,7 +10,7 @@ export const initializeSocket = (server) => {
     "http://localhost:5174",
     "http://localhost:5175",
     "http://localhost:3000",
-    process.env.CLIENT_URL
+    process.env.CLIENT_URL,
   ].filter(Boolean);
 
   io = new Server(server, {
@@ -21,7 +21,7 @@ export const initializeSocket = (server) => {
     },
     pingTimeout: 60000,
     pingInterval: 25000,
-    transports: ['polling', 'websocket'], // Try polling first
+    transports: ["polling", "websocket"], // Try polling first
     allowEIO3: true, // Allow Engine.IO v3 clients
   });
 
@@ -30,7 +30,7 @@ export const initializeSocket = (server) => {
   // Socket authentication middleware
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
-    
+
     if (!token) {
       console.warn("Socket connection attempt without token");
       return next(new Error("Authentication error: No token provided"));
@@ -41,7 +41,7 @@ export const initializeSocket = (server) => {
         issuer: process.env.JWT_ISSUER || "trainer-platform",
         audience: process.env.JWT_AUDIENCE || "trainer-users",
       });
-      
+
       socket.userId = decoded.userId;
       socket.userRole = decoded.role;
       console.log(`✅ Socket authenticated for user: ${socket.userId}`);
@@ -66,7 +66,9 @@ export const initializeSocket = (server) => {
     // Join conversation room
     socket.on("join_conversation", (conversationId) => {
       socket.join(`conversation:${conversationId}`);
-      console.log(`User ${socket.userId} joined conversation ${conversationId}`);
+      console.log(
+        `User ${socket.userId} joined conversation ${conversationId}`,
+      );
     });
 
     // Leave conversation room
@@ -124,9 +126,18 @@ export const getIO = () => {
 };
 
 // Helper functions to emit events
-export const emitNewMessage = (conversationId, message) => {
+// broadcast message event; if participants array is provided we also fire it to personal user rooms
+export const emitNewMessage = (conversationId, message, participants = []) => {
   if (io) {
+    // normal conversation room
     io.to(`conversation:${conversationId}`).emit("new_message", message);
+
+    // also notify personal rooms so clients that haven't joined yet still receive the event
+    if (Array.isArray(participants) && participants.length) {
+      participants.forEach((uid) => {
+        io.to(`user:${uid}`).emit("new_message", message);
+      });
+    }
   }
 };
 

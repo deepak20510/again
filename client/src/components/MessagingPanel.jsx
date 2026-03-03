@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { X, MessageSquare, Search, Users, Send, MoreVertical, Phone, Video, Info } from "lucide-react";
+import {
+  X,
+  MessageSquare,
+  Search,
+  Users,
+  Send,
+  MoreVertical,
+  Phone,
+  Video,
+  Info,
+} from "lucide-react";
 import ApiService from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../context/ThemeContext";
@@ -23,24 +33,52 @@ const MessagingPanel = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  // helper used in multiple places so we can update the conversation list
+  const { user } = useAuth();
+
+  const handleNewMessage = (message) => {
+    // Update conversations list with new message, moving it to the top
+    setConversations((prev) =>
+      prev
+        .map((conv) => {
+          if (conv.id !== message.conversationId) return conv;
+
+          // increment unread count if the message is not from the current user
+          const isOwn = message.senderId === user?.id;
+          const prevCount = conv._count?.messages || 0;
+          const newCount = isOwn ? prevCount : prevCount + 1;
+
+          return {
+            ...conv,
+            messages: [message],
+            updatedAt: new Date(),
+            _count: { ...conv._count, messages: newCount },
+          };
+        })
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),
+    );
+  };
+
   useEffect(() => {
     if (!socket) return;
 
-    const handleNewMessage = (message) => {
-      // Update conversations list with new message
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === message.conversationId
-            ? { ...conv, messages: [message], updatedAt: new Date() }
+    socket.on("new_message", handleNewMessage);
+
+    const handleRead = ({ conversationId }) => {
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === conversationId
+            ? { ...conv, _count: { ...conv._count, messages: 0 } }
             : conv
-        ).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+        )
       );
     };
 
-    socket.on("new_message", handleNewMessage);
+    socket.on("messages_read", handleRead);
 
     return () => {
       socket.off("new_message", handleNewMessage);
+      socket.off("messages_read", handleRead);
     };
   }, [socket]);
 
@@ -67,7 +105,9 @@ const MessagingPanel = ({ isOpen, onClose }) => {
 
   const startConversation = async (userId) => {
     try {
-      const response = await ApiService.createConversation({ participantId: userId });
+      const response = await ApiService.createConversation({
+        participantId: userId,
+      });
       setSelectedConversation(response.data);
       setView("conversations");
       await loadConversations();
@@ -76,17 +116,26 @@ const MessagingPanel = ({ isOpen, onClose }) => {
     }
   };
 
-  const filteredConversations = conversations.filter(conv => {
+  const filteredConversations = conversations.filter((conv) => {
     const participant = conv.participants[0];
-    const name = `${participant?.firstName || ""} ${participant?.lastName || ""}`.toLowerCase();
-    const institutionName = participant?.institutionProfile?.name?.toLowerCase() || "";
-    return name.includes(searchQuery.toLowerCase()) || institutionName.includes(searchQuery.toLowerCase());
+    const name =
+      `${participant?.firstName || ""} ${participant?.lastName || ""}`.toLowerCase();
+    const institutionName =
+      participant?.institutionProfile?.name?.toLowerCase() || "";
+    return (
+      name.includes(searchQuery.toLowerCase()) ||
+      institutionName.includes(searchQuery.toLowerCase())
+    );
   });
 
-  const filteredUsers = availableUsers.filter(user => {
-    const name = `${user?.firstName || ""} ${user?.lastName || ""}`.toLowerCase();
+  const filteredUsers = availableUsers.filter((user) => {
+    const name =
+      `${user?.firstName || ""} ${user?.lastName || ""}`.toLowerCase();
     const institutionName = user?.institutionProfile?.name?.toLowerCase() || "";
-    return name.includes(searchQuery.toLowerCase()) || institutionName.includes(searchQuery.toLowerCase());
+    return (
+      name.includes(searchQuery.toLowerCase()) ||
+      institutionName.includes(searchQuery.toLowerCase())
+    );
   });
 
   if (!isOpen) return null;
@@ -94,23 +143,32 @@ const MessagingPanel = ({ isOpen, onClose }) => {
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Panel - LinkedIn Style */}
-      <div className={`fixed bottom-0 right-6 w-[420px] h-[600px] ${theme.cardBg} rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}>
+      <div
+        className={`fixed bottom-0 right-6 w-[420px] h-[600px] ${theme.cardBg} rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}
+      >
         {/* Header */}
-        <div className={`px-4 py-3 border-b ${theme.cardBorder} flex items-center justify-between`}>
+        <div
+          className={`px-4 py-3 border-b ${theme.cardBorder} flex items-center justify-between`}
+        >
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg`}>
+            <div
+              className={`w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg`}
+            >
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className={`text-base font-semibold ${theme.textPrimary}`}>Messaging</h2>
+              <h2 className={`text-base font-semibold ${theme.textPrimary}`}>
+                Messaging
+              </h2>
               <p className={`text-xs ${theme.textMuted}`}>
-                {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+                {conversations.length} conversation
+                {conversations.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -130,7 +188,9 @@ const MessagingPanel = ({ isOpen, onClose }) => {
         {/* Search */}
         <div className={`px-4 py-3 border-b ${theme.cardBorder}`}>
           <div className="relative">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme.textMuted}`} />
+            <Search
+              className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme.textMuted}`}
+            />
             <input
               type="text"
               placeholder="Search messages..."
@@ -170,8 +230,11 @@ const MessagingPanel = ({ isOpen, onClose }) => {
           {view === "conversations" ? (
             loading ? (
               <div className="p-4 space-y-3">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${theme.inputBg} animate-pulse`}>
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-3 p-3 rounded-lg ${theme.inputBg} animate-pulse`}
+                  >
                     <div className="w-12 h-12 rounded-full bg-gray-300" />
                     <div className="flex-1 space-y-2">
                       <div className="h-4 bg-gray-300 rounded w-3/4" />
@@ -182,20 +245,29 @@ const MessagingPanel = ({ isOpen, onClose }) => {
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                <div className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mb-4`}>
+                <div
+                  className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mb-4`}
+                >
                   <MessageSquare className={`w-8 h-8 ${theme.textMuted}`} />
                 </div>
-                <h3 className={`text-sm font-semibold ${theme.textPrimary} mb-1`}>No messages yet</h3>
-                <p className={`text-xs ${theme.textMuted}`}>Start a conversation from "All Users" tab</p>
+                <h3
+                  className={`text-sm font-semibold ${theme.textPrimary} mb-1`}
+                >
+                  No messages yet
+                </h3>
+                <p className={`text-xs ${theme.textMuted}`}>
+                  Start a conversation from "All Users" tab
+                </p>
               </div>
             ) : (
               <div className="p-2">
-                {filteredConversations.map(conv => {
+                {filteredConversations.map((conv) => {
                   const participant = conv.participants[0];
                   const lastMessage = conv.messages?.[0];
                   const unreadCount = conv._count?.messages || 0;
-                  const displayName = participant?.institutionProfile?.name || 
-                                     `${participant?.firstName || ""} ${participant?.lastName || ""}`.trim();
+                  const displayName =
+                    participant?.institutionProfile?.name ||
+                    `${participant?.firstName || ""} ${participant?.lastName || ""}`.trim();
 
                   return (
                     <button
@@ -212,17 +284,23 @@ const MessagingPanel = ({ isOpen, onClose }) => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <h3 className={`font-semibold text-sm ${theme.textPrimary} truncate`}>
+                            <h3
+                              className={`font-semibold text-sm ${theme.textPrimary} truncate`}
+                            >
                               {displayName}
                             </h3>
                             {lastMessage && (
-                              <span className={`text-xs ${theme.textMuted} flex-shrink-0 ml-2`}>
+                              <span
+                                className={`text-xs ${theme.textMuted} flex-shrink-0 ml-2`}
+                              >
                                 {formatDistanceToNow(lastMessage.createdAt)}
                               </span>
                             )}
                           </div>
                           <div className="flex items-center justify-between">
-                            <p className={`text-xs ${theme.textSecondary} truncate`}>
+                            <p
+                              className={`text-xs ${theme.textSecondary} truncate`}
+                            >
                               {lastMessage?.content || "Start a conversation"}
                             </p>
                             {unreadCount > 0 && (
@@ -242,18 +320,29 @@ const MessagingPanel = ({ isOpen, onClose }) => {
             <div className="p-2">
               {filteredUsers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                  <div className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mb-4`}>
+                  <div
+                    className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mb-4`}
+                  >
                     <Users className={`w-8 h-8 ${theme.textMuted}`} />
                   </div>
-                  <h3 className={`text-sm font-semibold ${theme.textPrimary} mb-1`}>No users found</h3>
-                  <p className={`text-xs ${theme.textMuted}`}>Try a different search</p>
+                  <h3
+                    className={`text-sm font-semibold ${theme.textPrimary} mb-1`}
+                  >
+                    No users found
+                  </h3>
+                  <p className={`text-xs ${theme.textMuted}`}>
+                    Try a different search
+                  </p>
                 </div>
               ) : (
-                filteredUsers.map(user => {
-                  const displayName = user?.institutionProfile?.name || 
-                                     `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
-                  const location = user?.trainerProfile?.location || user?.institutionProfile?.location;
-                  
+                filteredUsers.map((user) => {
+                  const displayName =
+                    user?.institutionProfile?.name ||
+                    `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+                  const location =
+                    user?.trainerProfile?.location ||
+                    user?.institutionProfile?.location;
+
                   return (
                     <button
                       key={user.id}
@@ -265,17 +354,25 @@ const MessagingPanel = ({ isOpen, onClose }) => {
                           {displayName.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-semibold text-sm ${theme.textPrimary} truncate`}>
+                          <h3
+                            className={`font-semibold text-sm ${theme.textPrimary} truncate`}
+                          >
                             {displayName}
                           </h3>
                           <div className="flex items-center gap-2">
-                            <span className={`text-xs ${theme.textMuted} capitalize`}>
+                            <span
+                              className={`text-xs ${theme.textMuted} capitalize`}
+                            >
                               {user?.role?.toLowerCase()}
                             </span>
                             {location && (
                               <>
-                                <span className={`text-xs ${theme.textMuted}`}>•</span>
-                                <span className={`text-xs ${theme.textMuted} truncate`}>
+                                <span className={`text-xs ${theme.textMuted}`}>
+                                  •
+                                </span>
+                                <span
+                                  className={`text-xs ${theme.textMuted} truncate`}
+                                >
                                   {location}
                                 </span>
                               </>
@@ -298,6 +395,7 @@ const MessagingPanel = ({ isOpen, onClose }) => {
         <ChatWindowModal
           conversation={selectedConversation}
           onClose={() => setSelectedConversation(null)}
+          onNewMessage={handleNewMessage}
         />
       )}
     </>
@@ -305,7 +403,7 @@ const MessagingPanel = ({ isOpen, onClose }) => {
 };
 
 // Separate Chat Window Component
-const ChatWindowModal = ({ conversation, onClose }) => {
+const ChatWindowModal = ({ conversation, onClose, onNewMessage, onConversationRead }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -316,21 +414,24 @@ const ChatWindowModal = ({ conversation, onClose }) => {
   const { theme } = useTheme();
 
   const participant = conversation.participants[0];
-  const displayName = participant?.institutionProfile?.name || 
-                     `${participant?.firstName || ""} ${participant?.lastName || ""}`.trim();
+  const displayName =
+    participant?.institutionProfile?.name ||
+    `${participant?.firstName || ""} ${participant?.lastName || ""}`.trim();
 
   useEffect(() => {
-    loadMessages();
-    
-    if (socket) {
-      socket.emit("join_conversation", conversation.id);
-      socket.on("new_message", handleNewMessage);
+    if (!socket) return;
 
-      return () => {
-        socket.emit("leave_conversation", conversation.id);
-        socket.off("new_message", handleNewMessage);
-      };
-    }
+    // join room first so we don't miss any events
+    socket.emit("join_conversation", conversation.id);
+    socket.on("new_message", handleNewMessage);
+
+    // then fetch history
+    loadMessages();
+
+    return () => {
+      socket.emit("leave_conversation", conversation.id);
+      socket.off("new_message", handleNewMessage);
+    };
   }, [conversation.id, socket]);
 
   useEffect(() => {
@@ -342,27 +443,27 @@ const ChatWindowModal = ({ conversation, onClose }) => {
       setLoading(true);
       const response = await ApiService.getMessages(conversation.id);
       setMessages(response.data || []);
-      
-      if (socket) {
-        socket.emit("mark_read", { conversationId: conversation.id });
-      }
-    } catch (error) {
-      console.error("Failed to load messages:", error);
-    } finally {
+
+      // clear our own unread counter locally
+      onConversationRead && onConversationRead(conversation.id);
+
       setLoading(false);
     }
   };
 
   const handleNewMessage = (message) => {
+    // bubble up to parent component as well so the conversation list can update
+    onNewMessage && onNewMessage(message);
+
     if (message.conversationId === conversation.id) {
-      setMessages(prev => {
+      setMessages((prev) => {
         // Avoid duplicates
-        if (prev.some(m => m.id === message.id)) {
+        if (prev.some((m) => m.id === message.id)) {
           return prev;
         }
         return [...prev, message];
       });
-      
+
       // Auto-scroll to bottom
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -376,10 +477,16 @@ const ChatWindowModal = ({ conversation, onClose }) => {
 
     try {
       setSending(true);
-      await ApiService.sendMessage({
+      const response = await ApiService.sendMessage({
         conversationId: conversation.id,
-        content: newMessage.trim()
+        content: newMessage.trim(),
       });
+      const sent = response.data;
+
+      // immediately show our own message (optimistic update)
+      setMessages((prev) => [...prev, sent]);
+      onNewMessage && onNewMessage(sent);
+
       setNewMessage("");
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -390,11 +497,18 @@ const ChatWindowModal = ({ conversation, onClose }) => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" onClick={onClose} />
-      
-      <div className={`fixed bottom-0 right-[460px] w-[420px] h-[600px] ${theme.cardBg} rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}>
+      <div
+        className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <div
+        className={`fixed bottom-0 right-[460px] w-[420px] h-[600px] ${theme.cardBg} rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}
+      >
         {/* Header */}
-        <div className={`px-4 py-3 border-b ${theme.cardBorder} flex items-center justify-between`}>
+        <div
+          className={`px-4 py-3 border-b ${theme.cardBorder} flex items-center justify-between`}
+        >
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
@@ -421,7 +535,10 @@ const ChatWindowModal = ({ conversation, onClose }) => {
             <button className={`p-2 rounded-lg ${theme.hoverBg} transition`}>
               <Info className={`w-4 h-4 ${theme.textSecondary}`} />
             </button>
-            <button onClick={onClose} className={`p-2 rounded-lg ${theme.hoverBg} transition`}>
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-lg ${theme.hoverBg} transition`}
+            >
               <X className={`w-4 h-4 ${theme.textSecondary}`} />
             </button>
           </div>
@@ -438,8 +555,13 @@ const ChatWindowModal = ({ conversation, onClose }) => {
               {messages.map((msg) => {
                 const isOwn = msg.senderId === user.id;
                 return (
-                  <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[70%] ${isOwn ? "order-2" : "order-1"}`}>
+                  <div
+                    key={msg.id}
+                    className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[70%] ${isOwn ? "order-2" : "order-1"}`}
+                    >
                       <div
                         className={`px-4 py-2 rounded-2xl ${
                           isOwn
@@ -449,8 +571,13 @@ const ChatWindowModal = ({ conversation, onClose }) => {
                       >
                         <p className="text-sm break-words">{msg.content}</p>
                       </div>
-                      <p className={`text-xs ${theme.textMuted} mt-1 ${isOwn ? "text-right" : "text-left"}`}>
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <p
+                        className={`text-xs ${theme.textMuted} mt-1 ${isOwn ? "text-right" : "text-left"}`}
+                      >
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   </div>
@@ -462,7 +589,10 @@ const ChatWindowModal = ({ conversation, onClose }) => {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className={`p-4 border-t ${theme.cardBorder}`}>
+        <form
+          onSubmit={handleSendMessage}
+          className={`p-4 border-t ${theme.cardBorder}`}
+        >
           <div className="flex gap-2">
             <input
               type="text"
