@@ -65,12 +65,12 @@ const MessagingPanel = ({ isOpen, onClose }) => {
     socket.on("new_message", handleNewMessage);
 
     const handleRead = ({ conversationId }) => {
-      setConversations(prev =>
-        prev.map(conv =>
+      setConversations((prev) =>
+        prev.map((conv) =>
           conv.id === conversationId
             ? { ...conv, _count: { ...conv._count, messages: 0 } }
-            : conv
-        )
+            : conv,
+        ),
       );
     };
 
@@ -403,7 +403,12 @@ const MessagingPanel = ({ isOpen, onClose }) => {
 };
 
 // Separate Chat Window Component
-const ChatWindowModal = ({ conversation, onClose, onNewMessage, onConversationRead }) => {
+const ChatWindowModal = ({
+  conversation,
+  onClose,
+  onNewMessage,
+  onConversationRead,
+}) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -447,6 +452,9 @@ const ChatWindowModal = ({ conversation, onClose, onNewMessage, onConversationRe
       // clear our own unread counter locally
       onConversationRead && onConversationRead(conversation.id);
 
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to load messages:", error);
       setLoading(false);
     }
   };
