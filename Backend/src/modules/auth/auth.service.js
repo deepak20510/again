@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { AppError } from "../../utils/AppError.js";
 import { withRetry } from "../../utils/dbHelper.js";
+import { sendVerificationOTPEmail } from "../../services/email.service.js";
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 10;
 
@@ -145,6 +146,33 @@ export const signupService = async ({ email, password, role, phone, organization
     "Role:",
     createdUser.role,
   );
+
+  // Send verification OTP email (non-blocking)
+  try {
+    const crypto = await import("crypto");
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const hashedOTP = await bcrypt.hash(otp, SALT_ROUNDS);
+    const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save OTP to database
+    await client.user.update({
+      where: { id: createdUser.id },
+      data: {
+        resetPasswordOTP: hashedOTP,
+        resetPasswordOTPExpires: expiryTime,
+      },
+    });
+
+    // Send email (don't wait for it)
+    sendVerificationOTPEmail(createdUser.email, otp).catch(err => {
+      console.error("Failed to send verification email:", err);
+    });
+
+    console.log(`[Signup] Verification OTP sent to ${createdUser.email}`);
+  } catch (error) {
+    console.error("[Signup] Failed to send verification OTP:", error);
+    // Don't fail signup if email fails
+  }
 
   return {
     token,

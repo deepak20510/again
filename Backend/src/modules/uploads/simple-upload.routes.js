@@ -52,8 +52,27 @@ router.post(
         });
       }
 
-      // Use Cloudinary secure URL
-      const fileUrl = req.file.path || req.file.secure_url;
+      console.log('File uploaded to Cloudinary:', {
+        filename: req.file.filename,
+        path: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+
+      // Always use Cloudinary secure HTTPS URL
+      // req.file.path from Cloudinary is already the full HTTPS URL
+      const fileUrl = req.file.path;
+
+      // Verify it's a valid Cloudinary URL
+      if (!fileUrl || !fileUrl.startsWith('https://res.cloudinary.com/')) {
+        console.error('Invalid Cloudinary URL:', fileUrl);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to get valid Cloudinary URL",
+        });
+      }
+
+      console.log('Returning Cloudinary URL:', fileUrl);
 
       res.status(200).json({
         success: true,
@@ -63,10 +82,12 @@ router.post(
           originalName: req.file.originalname,
           size: req.file.size,
           mimetype: req.file.mimetype,
-          url: fileUrl, // Cloudinary URL
+          url: fileUrl, // Full Cloudinary HTTPS URL
+          publicId: req.file.filename, // Cloudinary public ID for reference
         },
       });
     } catch (error) {
+      console.error('Upload error:', error);
       res.status(500).json({
         success: false,
         message: error.message || "Failed to upload file",
