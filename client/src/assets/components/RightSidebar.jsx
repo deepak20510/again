@@ -47,7 +47,7 @@ export default function RightSidebar({ userType = USER_TYPES.STUDENT }) {
   }, [userType]);
 
   return (
-    <div className="space-y-3 sticky top-20 max-h-[calc(100vh-5rem)] overflow-y-auto pb-4">
+    <div className="space-y-3">
       {/* Insights Card */}
       <div className={`${theme.cardBg} rounded-xl shadow-lg border ${theme.cardBorder} overflow-hidden`}>
         <div className={`px-4 py-3 border-b ${theme.divider} flex items-center gap-2`}>

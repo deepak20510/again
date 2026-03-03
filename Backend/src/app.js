@@ -28,12 +28,16 @@ import discoveryRoutes from "./modules/discovery/discovery.routes.js";
 
 import { errorHandler } from "./middleware/error.middleware.js";
 import { auditMiddleware } from "./middleware/audit.middleware.js";
+import { requestTimeout } from "./middleware/timeout.middleware.js";
 
 const app = express();
 
 console.log("APP FILE LOADED - CORS FIXED");
 
 /* ================= SECURITY ================= */
+
+// Request timeout middleware (must be early in the chain)
+app.use(requestTimeout(30000)); // 30 second timeout
 
 // CORS must be before helmet
 app.use(
@@ -42,6 +46,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5174",
+      "http://localhost:5175",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

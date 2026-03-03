@@ -38,22 +38,7 @@ export const getOrCreateConversation = async (req, res, next) => {
             });
         }
 
-        // CHECK CONNECTION: Users must be connected to message each other
-        const connection = await prisma.connection.findFirst({
-            where: {
-                OR: [
-                    { senderId: userId, receiverId: participantId, status: "ACCEPTED" },
-                    { senderId: participantId, receiverId: userId, status: "ACCEPTED" }
-                ]
-            }
-        });
-
-        if (!connection) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You must be connected with this user to start a conversation" 
-            });
-        }
+        // REMOVED CONNECTION CHECK - All trainers and institutions can message each other
 
         // Find if conversation already exists between these two
         const existing = await prisma.conversation.findFirst({
@@ -65,7 +50,16 @@ export const getOrCreateConversation = async (req, res, next) => {
             },
             include: {
                 participants: {
-                    select: { id: true, firstName: true, lastName: true, role: true, profilePicture: true }
+                    select: { 
+                        id: true, 
+                        firstName: true, 
+                        lastName: true, 
+                        role: true, 
+                        profilePicture: true,
+                        institutionProfile: {
+                            select: { name: true, location: true }
+                        }
+                    }
                 }
             }
         });
@@ -82,7 +76,16 @@ export const getOrCreateConversation = async (req, res, next) => {
             },
             include: {
                 participants: {
-                    select: { id: true, firstName: true, lastName: true, role: true, profilePicture: true }
+                    select: { 
+                        id: true, 
+                        firstName: true, 
+                        lastName: true, 
+                        role: true, 
+                        profilePicture: true,
+                        institutionProfile: {
+                            select: { name: true, location: true }
+                        }
+                    }
                 }
             }
         });
@@ -104,7 +107,16 @@ export const getConversations = async (req, res, next) => {
             include: {
                 participants: {
                     where: { id: { not: userId } },
-                    select: { id: true, firstName: true, lastName: true, role: true, profilePicture: true }
+                    select: { 
+                        id: true, 
+                        firstName: true, 
+                        lastName: true, 
+                        role: true, 
+                        profilePicture: true,
+                        institutionProfile: {
+                            select: { name: true, location: true }
+                        }
+                    }
                 },
                 messages: {
                     take: 1,
@@ -148,7 +160,15 @@ export const sendMessage = async (req, res, next) => {
             },
             include: {
                 participants: {
-                    select: { id: true, firstName: true, lastName: true, role: true }
+                    select: { 
+                        id: true, 
+                        firstName: true, 
+                        lastName: true, 
+                        role: true,
+                        institutionProfile: {
+                            select: { name: true }
+                        }
+                    }
                 }
             }
         });
@@ -248,6 +268,62 @@ export const markAsRead = async (req, res, next) => {
         });
 
         res.json({ success: true });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Get all available users for messaging (trainers and institutions only)
+export const getAvailableUsers = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Determine which roles the current user can message
+        let allowedRoles = [];
+        if (userRole === "TRAINER") {
+            allowedRoles = ["INSTITUTION"];
+        } else if (userRole === "INSTITUTION") {
+            allowedRoles = ["TRAINER"];
+        } else {
+            return res.json({ success: true, data: [] }); // Students can't message anyone
+        }
+
+        // Get all users with allowed roles, excluding self
+        const users = await prisma.user.findMany({
+            where: {
+                role: { in: allowedRoles },
+                id: { not: userId },
+                isActive: true
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                profilePicture: true,
+                headline: true,
+                trainerProfile: {
+                    select: {
+                        bio: true,
+                        location: true,
+                        skills: true
+                    }
+                },
+                institutionProfile: {
+                    select: {
+                        name: true,
+                        location: true
+                    }
+                }
+            },
+            orderBy: [
+                { firstName: 'asc' },
+                { lastName: 'asc' }
+            ]
+        });
+
+        res.json({ success: true, data: users });
     } catch (error) {
         next(error);
     }

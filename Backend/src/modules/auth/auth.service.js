@@ -2,6 +2,7 @@ import client from "../../db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { AppError } from "../../utils/AppError.js";
+import { withRetry } from "../../utils/dbHelper.js";
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 10;
 
@@ -26,9 +27,11 @@ export const signupService = async ({ email, password, role, phone, organization
     throw new AppError("Invalid role", 400);
   }
 
-  const existingUser = await client.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true },
+  const existingUser = await withRetry(async () => {
+    return await client.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
+    });
   });
 
   if (existingUser) {
@@ -37,16 +40,17 @@ export const signupService = async ({ email, password, role, phone, organization
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-  const createdUser = await client.user.create({
-    data: {
-      email: normalizedEmail,
-      password: hashedPassword,
-      role,
-      // Use organization as a headline or name base
-      headline: role === "TRAINER" ? (organization || "Expert Trainer") : (role === "INSTITUTION" ? (organization || "Educational Institution") : "Student"),
+  const createdUser = await withRetry(async () => {
+    return await client.user.create({
+      data: {
+        email: normalizedEmail,
+        password: hashedPassword,
+        role,
+        // Use organization as a headline or name base
+        headline: role === "TRAINER" ? (organization || "Expert Trainer") : (role === "INSTITUTION" ? (organization || "Educational Institution") : "Student"),
 
-      // Automatically create appropriate profile record
-      ...(role === "TRAINER" && {
+        // Automatically create appropriate profile record
+        ...(role === "TRAINER" && {
         trainerProfile: {
           create: {
             experience: 0,
@@ -82,6 +86,7 @@ export const signupService = async ({ email, password, role, phone, organization
       headline: true,
       createdAt: true,
     },
+    });
   });
 
 
@@ -126,8 +131,10 @@ export const loginService = async ({ email, password }) => {
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  const user = await client.user.findUnique({
-    where: { email: normalizedEmail },
+  const user = await withRetry(async () => {
+    return await client.user.findUnique({
+      where: { email: normalizedEmail },
+    });
   });
 
   // Prevent user enumeration

@@ -21,14 +21,17 @@ import {
   Star,
   Home,
   Compass,
+  Check,
 } from "lucide-react";
 import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { useSocket } from "../../context/SocketContext";
 import { useNavigate } from "react-router-dom";
-import NotificationBell from "../../components/NotificationBell";
+import ApiService from "../../services/api";
 import MessagingPanel from "../../components/MessagingPanel";
 import DiscoveryPanel from "../../components/DiscoveryPanel";
+import { formatDistanceToNow } from "../../utils/dateUtils";
 
 const ICON_MAP = {
   Users,
@@ -51,6 +54,7 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
   const navItems = config.navbar.navItems;
   const { isDarkMode, toggleTheme, theme } = useTheme();
   const { user, logout } = useAuth();
+  const { socket } = useSocket();
   const navigate = useNavigate();
   const [activeItem, setActiveItem] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -58,17 +62,94 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
   const [showMessaging, setShowMessaging] = useState(false);
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const userMenuRef = useRef(null);
+  const notificationRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setShowUserMenu(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Load notifications on mount
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  // Socket listener for real-time notifications
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notification) => {
+      setNotifications(prev => [notification, ...prev]);
+      setUnreadCount(prev => prev + 1);
+      
+      // Show brief animation
+      setShowNotifications(true);
+      setTimeout(() => setShowNotifications(false), 3000);
+    };
+
+    socket.on("notification", handleNotification);
+
+    return () => {
+      socket.off("notification", handleNotification);
+    };
+  }, [socket]);
+
+  const loadNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const response = await ApiService.getNotifications();
+      setNotifications(response.data || []);
+      setUnreadCount(response.unreadCount || 0);
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await ApiService.markNotificationAsRead(notificationId);
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await ApiService.markAllNotificationsAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
+    if (notification.link) {
+      navigate(notification.link);
+      setShowNotifications(false);
+    }
+  };
 
   const getIcon = (iconName) => ICON_MAP[iconName] || Users;
 
@@ -77,8 +158,6 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
     // Route specific nav items
     if (item.id === "messaging") {
       setShowMessaging(true);
-    } else if (item.id === "notifications") {
-      setShowNotifications(!showNotifications);
     }
   };
 
@@ -140,11 +219,92 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
 
         {/* Right Side */}
         <div className="flex items-center gap-1">
-          {/* Quick Actions - Removed, using navbar items instead */}
-          <NotificationBell />
-
-          {/* Nav Items */}
+          {/* Nav Items (including Notifications) */}
           <nav className="flex items-center gap-1">
+            {/* Notification Item */}
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 group min-w-[56px] ${
+                  showNotifications
+                    ? `${theme.accentBg}/10 ${theme.accentColor}`
+                    : `${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText}`
+                }`}
+              >
+                <div className="relative">
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-medium animate-pulse">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-medium whitespace-nowrap">Notifications</span>
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div 
+                  className={`absolute right-0 mt-2 w-96 ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} z-50 max-h-[500px] overflow-hidden flex flex-col animate-slideDown`}
+                  style={{
+                    animation: 'slideDown 0.2s ease-out'
+                  }}
+                >
+                  <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
+                    <h3 className={`font-semibold ${theme.textPrimary}`}>Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className={`text-sm ${theme.accentColor} hover:underline flex items-center gap-1`}
+                      >
+                        <Check size={14} />
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="overflow-y-auto flex-1">
+                    {loadingNotifications ? (
+                      <div className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto" />
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <div className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mx-auto mb-3`}>
+                          <Bell className={`w-8 h-8 ${theme.textMuted}`} />
+                        </div>
+                        <p className={`${theme.textMuted}`}>No notifications</p>
+                      </div>
+                    ) : (
+                      notifications.map(notification => (
+                        <button
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`w-full p-4 border-b ${theme.cardBorder} ${theme.hoverBg} text-left transition ${
+                            !notification.isRead ? `${theme.accentBg}/5` : ""
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-medium text-sm ${theme.textPrimary}`}>{notification.title}</p>
+                              <p className={`text-sm ${theme.textSecondary} truncate mt-0.5`}>{notification.message}</p>
+                              <p className={`text-xs ${theme.textMuted} mt-1`}>
+                                {formatDistanceToNow(notification.createdAt)}
+                              </p>
+                            </div>
+                            {!notification.isRead && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />
+                            )}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Other Nav Items */}
             {navItems.map((item) => {
               const IconComponent = getIcon(item.icon);
               const isActive = activeItem === item.id;

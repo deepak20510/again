@@ -3,11 +3,12 @@ import { X, MessageSquare, Search, Users, Send, MoreVertical, Phone, Video, Info
 import ApiService from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import { formatDistanceToNow } from "../utils/dateUtils";
 
 const MessagingPanel = ({ isOpen, onClose }) => {
   const [conversations, setConversations] = useState([]);
-  const [connections, setConnections] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -18,14 +19,15 @@ const MessagingPanel = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       loadConversations();
-      loadConnections();
+      loadAvailableUsers();
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("new_message", (message) => {
+    const handleNewMessage = (message) => {
+      // Update conversations list with new message
       setConversations(prev => 
         prev.map(conv => 
           conv.id === message.conversationId
@@ -33,10 +35,12 @@ const MessagingPanel = ({ isOpen, onClose }) => {
             : conv
         ).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       );
-    });
+    };
+
+    socket.on("new_message", handleNewMessage);
 
     return () => {
-      socket.off("new_message");
+      socket.off("new_message", handleNewMessage);
     };
   }, [socket]);
 
@@ -52,12 +56,12 @@ const MessagingPanel = ({ isOpen, onClose }) => {
     }
   };
 
-  const loadConnections = async () => {
+  const loadAvailableUsers = async () => {
     try {
-      const response = await ApiService.getMyNetwork();
-      setConnections(response.data || []);
+      const response = await ApiService.getAvailableUsers();
+      setAvailableUsers(response.data || []);
     } catch (error) {
-      console.error("Failed to load connections:", error);
+      console.error("Failed to load available users:", error);
     }
   };
 
@@ -75,12 +79,14 @@ const MessagingPanel = ({ isOpen, onClose }) => {
   const filteredConversations = conversations.filter(conv => {
     const participant = conv.participants[0];
     const name = `${participant?.firstName || ""} ${participant?.lastName || ""}`.toLowerCase();
-    return name.includes(searchQuery.toLowerCase());
+    const institutionName = participant?.institutionProfile?.name?.toLowerCase() || "";
+    return name.includes(searchQuery.toLowerCase()) || institutionName.includes(searchQuery.toLowerCase());
   });
 
-  const filteredConnections = connections.filter(conn => {
-    const name = `${conn?.firstName || ""} ${conn?.lastName || ""}`.toLowerCase();
-    return name.includes(searchQuery.toLowerCase());
+  const filteredUsers = availableUsers.filter(user => {
+    const name = `${user?.firstName || ""} ${user?.lastName || ""}`.toLowerCase();
+    const institutionName = user?.institutionProfile?.name?.toLowerCase() || "";
+    return name.includes(searchQuery.toLowerCase()) || institutionName.includes(searchQuery.toLowerCase());
   });
 
   if (!isOpen) return null;
@@ -148,14 +154,14 @@ const MessagingPanel = ({ isOpen, onClose }) => {
             Focused
           </button>
           <button
-            onClick={() => setView("connections")}
+            onClick={() => setView("users")}
             className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
-              view === "connections"
+              view === "users"
                 ? `${theme.accentBg} text-white shadow-sm`
                 : `${theme.textSecondary} ${theme.hoverBg}`
             }`}
           >
-            Connections
+            All Users
           </button>
         </div>
 
@@ -180,7 +186,7 @@ const MessagingPanel = ({ isOpen, onClose }) => {
                   <MessageSquare className={`w-8 h-8 ${theme.textMuted}`} />
                 </div>
                 <h3 className={`text-sm font-semibold ${theme.textPrimary} mb-1`}>No messages yet</h3>
-                <p className={`text-xs ${theme.textMuted}`}>Start a conversation with your connections</p>
+                <p className={`text-xs ${theme.textMuted}`}>Start a conversation from "All Users" tab</p>
               </div>
             ) : (
               <div className="p-2">
@@ -188,6 +194,8 @@ const MessagingPanel = ({ isOpen, onClose }) => {
                   const participant = conv.participants[0];
                   const lastMessage = conv.messages?.[0];
                   const unreadCount = conv._count?.messages || 0;
+                  const displayName = participant?.institutionProfile?.name || 
+                                     `${participant?.firstName || ""} ${participant?.lastName || ""}`.trim();
 
                   return (
                     <button
@@ -198,14 +206,14 @@ const MessagingPanel = ({ isOpen, onClose }) => {
                       <div className="flex items-start gap-3">
                         <div className="relative">
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                            {participant?.firstName?.[0]}{participant?.lastName?.[0]}
+                            {displayName.charAt(0).toUpperCase()}
                           </div>
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <h3 className={`font-semibold text-sm ${theme.textPrimary} truncate`}>
-                              {participant?.firstName} {participant?.lastName}
+                              {displayName}
                             </h3>
                             {lastMessage && (
                               <span className={`text-xs ${theme.textMuted} flex-shrink-0 ml-2`}>
@@ -232,37 +240,53 @@ const MessagingPanel = ({ isOpen, onClose }) => {
             )
           ) : (
             <div className="p-2">
-              {filteredConnections.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center p-6">
                   <div className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mb-4`}>
                     <Users className={`w-8 h-8 ${theme.textMuted}`} />
                   </div>
-                  <h3 className={`text-sm font-semibold ${theme.textPrimary} mb-1`}>No connections yet</h3>
-                  <p className={`text-xs ${theme.textMuted}`}>Connect with trainers and institutions</p>
+                  <h3 className={`text-sm font-semibold ${theme.textPrimary} mb-1`}>No users found</h3>
+                  <p className={`text-xs ${theme.textMuted}`}>Try a different search</p>
                 </div>
               ) : (
-                filteredConnections.map(conn => (
-                  <button
-                    key={conn.id}
-                    onClick={() => startConversation(conn.id)}
-                    className={`w-full p-3 rounded-lg ${theme.hoverBg} transition text-left mb-1`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                        {conn?.firstName?.[0]}{conn?.lastName?.[0]}
+                filteredUsers.map(user => {
+                  const displayName = user?.institutionProfile?.name || 
+                                     `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+                  const location = user?.trainerProfile?.location || user?.institutionProfile?.location;
+                  
+                  return (
+                    <button
+                      key={user.id}
+                      onClick={() => startConversation(user.id)}
+                      className={`w-full p-3 rounded-lg ${theme.hoverBg} transition text-left mb-1`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-semibold text-sm ${theme.textPrimary} truncate`}>
+                            {displayName}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs ${theme.textMuted} capitalize`}>
+                              {user?.role?.toLowerCase()}
+                            </span>
+                            {location && (
+                              <>
+                                <span className={`text-xs ${theme.textMuted}`}>•</span>
+                                <span className={`text-xs ${theme.textMuted} truncate`}>
+                                  {location}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Send className={`w-4 h-4 ${theme.textMuted}`} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`font-semibold text-sm ${theme.textPrimary} truncate`}>
-                          {conn?.firstName} {conn?.lastName}
-                        </h3>
-                        <span className={`text-xs ${theme.textMuted} capitalize`}>
-                          {conn?.role?.toLowerCase()}
-                        </span>
-                      </div>
-                      <Send className={`w-4 h-4 ${theme.textMuted}`} />
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  );
+                })
               )}
             </div>
           )}
@@ -292,6 +316,8 @@ const ChatWindowModal = ({ conversation, onClose }) => {
   const { theme } = useTheme();
 
   const participant = conversation.participants[0];
+  const displayName = participant?.institutionProfile?.name || 
+                     `${participant?.firstName || ""} ${participant?.lastName || ""}`.trim();
 
   useEffect(() => {
     loadMessages();
@@ -329,7 +355,18 @@ const ChatWindowModal = ({ conversation, onClose }) => {
 
   const handleNewMessage = (message) => {
     if (message.conversationId === conversation.id) {
-      setMessages(prev => [...prev, message]);
+      setMessages(prev => {
+        // Avoid duplicates
+        if (prev.some(m => m.id === message.id)) {
+          return prev;
+        }
+        return [...prev, message];
+      });
+      
+      // Auto-scroll to bottom
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     }
   };
 
@@ -361,13 +398,13 @@ const ChatWindowModal = ({ conversation, onClose }) => {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                {participant?.firstName?.[0]}{participant?.lastName?.[0]}
+                {displayName.charAt(0).toUpperCase()}
               </div>
               <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
             </div>
             <div>
               <h3 className={`font-semibold text-sm ${theme.textPrimary}`}>
-                {participant?.firstName} {participant?.lastName}
+                {displayName}
               </h3>
               <p className={`text-xs ${theme.textMuted} capitalize`}>
                 {participant?.role?.toLowerCase()}
@@ -448,8 +485,5 @@ const ChatWindowModal = ({ conversation, onClose }) => {
     </>
   );
 };
-
-// Import useAuth
-import { useAuth } from "../context/AuthContext";
 
 export default MessagingPanel;

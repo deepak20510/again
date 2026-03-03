@@ -14,19 +14,23 @@ export default function Dashboard({ userType = USER_TYPES.STUDENT }) {
 
       {/* 3 Column Layout */}
       <div className="max-w-7xl mx-auto grid grid-cols-12 gap-6 px-6 mt-6 pb-10">
-        {/* Left */}
+        {/* Left - Sticky Sidebar */}
         <div className="col-span-3">
-          <LeftSidebar userType={userType} />
+          <div className="sticky top-20">
+            <LeftSidebar userType={userType} />
+          </div>
         </div>
 
-        {/* Center */}
+        {/* Center - Scrollable Feed */}
         <div className="col-span-6">
           <FeedSection userType={userType} />
         </div>
 
-        {/* Right */}
+        {/* Right - Sticky Sidebar */}
         <div className="col-span-3">
-          <RightSidebar userType={userType} />
+          <div className="sticky top-20">
+            <RightSidebar userType={userType} />
+          </div>
         </div>
       </div>
     </div>

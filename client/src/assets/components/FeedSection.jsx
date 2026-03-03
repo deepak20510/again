@@ -332,11 +332,17 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
 
   /* ================= SORT POSTS ================= */
 
-  const sortedPosts = [...posts].sort((a, b) =>
-    sortType === "top"
-      ? (b.likes || 0) - (a.likes || 0)
-      : new Date(b.createdAt) - new Date(a.createdAt),
-  );
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (sortType === "top") {
+      // Sort by rating (highest first), then by total reviews as tiebreaker
+      const ratingDiff = (b.averageRating || 0) - (a.averageRating || 0);
+      if (ratingDiff !== 0) return ratingDiff;
+      return (b.totalReviews || 0) - (a.totalReviews || 0);
+    } else {
+      // Sort by creation date (newest first)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+  });
 
   // ================= POST INTERACTIONS =================
 

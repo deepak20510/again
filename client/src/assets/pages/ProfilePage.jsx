@@ -92,14 +92,16 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               ? post.imageUrl
               : `${BACKEND_URL}${post.imageUrl}`
             : null,
-          author: post.author ? {
-            ...post.author,
-            profilePicture: post.author.profilePicture
-              ? post.author.profilePicture.startsWith("http")
-                ? post.author.profilePicture
-                : `${BACKEND_URL}${post.author.profilePicture}`
-              : null,
-          } : null,
+          author: post.author
+            ? {
+                ...post.author,
+                profilePicture: post.author.profilePicture
+                  ? post.author.profilePicture.startsWith("http")
+                    ? post.author.profilePicture
+                    : `${BACKEND_URL}${post.author.profilePicture}`
+                  : null,
+              }
+            : null,
         }));
         setPosts(normalizedPosts);
       }
@@ -155,13 +157,13 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     setPosts((prev) =>
       prev.map((post) =>
         post.id === postId
-          ? { 
-              ...post, 
+          ? {
+              ...post,
               averageRating: reviewData.averageRating,
-              totalReviews: reviewData.totalReviews 
+              totalReviews: reviewData.totalReviews,
             }
-          : post
-      )
+          : post,
+      ),
     );
   };
 
@@ -170,10 +172,14 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     if (!profileData) {
       // Return empty structure while loading
       return {
-        name: "", headline: "", location: "",
-        experience: [], education: [], skills: [],
+        name: "",
+        headline: "",
+        location: "",
+        experience: [],
+        education: [],
+        skills: [],
         analytics: { views: 0, impressions: 0, appearances: 0 },
-        activity: { followers: 0, posts: 0 }
+        activity: { followers: 0, posts: 0 },
       };
     }
 
@@ -183,7 +189,11 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
     const formatDateRange = (start, end, isCurrent) => {
       const startYear = start ? new Date(start).getFullYear() : "N/A";
-      const endYear = isCurrent ? "Present" : end ? new Date(end).getFullYear() : "N/A";
+      const endYear = isCurrent
+        ? "Present"
+        : end
+          ? new Date(end).getFullYear()
+          : "N/A";
       return `${startYear} - ${endYear}`;
     };
 
@@ -191,7 +201,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       name,
       headline: profileData.headline || "Member at Tutroid",
       location: profileData.location || "Location not set",
-      avatar: profileData.profilePicture || profileData.avatar || profile.avatar,
+      avatar:
+        profileData.profilePicture || profileData.avatar || profile.avatar,
       coverImage: profileData.coverImage || null,
       skills: profileData.trainerProfile?.skills || profileData.skills || [],
       analytics: {
@@ -203,14 +214,14 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         followers: profileData.followersCount || 0,
         posts: posts.length,
       },
-      education: (profileData.education || []).map(edu => ({
+      education: (profileData.education || []).map((edu) => ({
         school: edu.school,
         degree: edu.degree,
         field: edu.fieldOfStudy,
         years: formatDateRange(edu.startDate, edu.endDate, false),
         logo: `https://ui-avatars.com/api/?name=${encodeURIComponent(edu.school)}&background=random`,
       })),
-      experience: (profileData.experience || []).map(exp => ({
+      experience: (profileData.experience || []).map((exp) => ({
         title: exp.title,
         company: exp.company,
         location: exp.location,
@@ -225,7 +236,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     if (userType === USER_TYPES.TRAINER) {
       return {
         ...commonData,
-        headline: profileData.trainerProfile?.bio || profileData.headline || "Expert Trainer",
+        headline:
+          profileData.trainerProfile?.bio ||
+          profileData.headline ||
+          "Expert Trainer",
         students: profileData.trainerProfile?.completedRequests || 0,
         courses: 0, // Mock for now
         rating: profileData.trainerProfile?.rating || 0,
@@ -235,16 +249,23 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     if (userType === USER_TYPES.INSTITUTE) {
       return {
         ...commonData,
-        headline: profileData.institutionProfile?.name || profileData.headline || "Institution",
+        headline:
+          profileData.institutionProfile?.name ||
+          profileData.headline ||
+          "Institution",
         founded: "2020", // Mock
         employees: "10-50", // Mock
         trainers: 0,
         students: 0,
         rating: profileData.institutionProfile?.rating || 0,
         programs: [
-          { name: "Full Stack Development", students: 120, duration: "6 months" },
-          { name: "Digital Marketing", students: 85, duration: "3 months" }
-        ]
+          {
+            name: "Full Stack Development",
+            students: 120,
+            duration: "6 months",
+          },
+          { name: "Digital Marketing", students: 85, duration: "3 months" },
+        ],
       };
     }
 
@@ -255,7 +276,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
   if (loading) {
     return (
-      <div className={`${theme.bg} min-h-screen flex items-center justify-center`}>
+      <div
+        className={`${theme.bg} min-h-screen flex items-center justify-center`}
+      >
         <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
     );
@@ -267,7 +290,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
   // Handler to receive updated profile data from modal
   const handleSaveProfile = (updatedUser) => {
-    setProfileData(prev => ({ ...prev, ...updatedUser }));
+    setProfileData((prev) => ({ ...prev, ...updatedUser }));
 
     // Dispatch event for sidebar sync
     window.dispatchEvent(
@@ -278,7 +301,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           location: updatedUser.location,
           avatar: updatedUser.profilePicture,
         },
-      })
+      }),
     );
 
     if (isOwnProfile && updateProfile) {
@@ -287,7 +310,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
     setSaveSuccess(true);
   };
-
 
   return (
     <div
@@ -774,12 +796,13 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 {data.skills.map((skill, index) => (
                   <span
                     key={index}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium ${isStudent
-                      ? "bg-blue-500/10 text-blue-500"
-                      : isTrainer
-                        ? "bg-emerald-500/10 text-emerald-500"
-                        : "bg-purple-500/10 text-purple-500"
-                      }`}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                      isStudent
+                        ? "bg-blue-500/10 text-blue-500"
+                        : isTrainer
+                          ? "bg-emerald-500/10 text-emerald-500"
+                          : "bg-purple-500/10 text-purple-500"
+                    }`}
                   >
                     {skill}
                   </span>
@@ -848,28 +871,28 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                           ? ["Raj Kumar", "Priya Singh", "Amit Sharma"][i - 1]
                           : isTrainer
                             ? ["Deepak Mahato", "Neha Gupta", "Rahul Verma"][
-                            i - 1
-                            ]
+                                i - 1
+                              ]
                             : ["John Trainer", "Sarah Lee", "Mike Chen"][i - 1]}
                       </h4>
                       <p className={`text-xs ${theme.textMuted} mt-0.5`}>
                         {isStudent
                           ? [
-                            "Software Engineer at Google",
-                            "Data Scientist at Amazon",
-                            "Product Manager at Flipkart",
-                          ][i - 1]
+                              "Software Engineer at Google",
+                              "Data Scientist at Amazon",
+                              "Product Manager at Flipkart",
+                            ][i - 1]
                           : isTrainer
                             ? [
-                              "Computer Science Student",
-                              "Aspiring Developer",
-                              "Web Development Enthusiast",
-                            ][i - 1]
+                                "Computer Science Student",
+                                "Aspiring Developer",
+                                "Web Development Enthusiast",
+                              ][i - 1]
                             : [
-                              "JavaScript Expert",
-                              "Python Specialist",
-                              "Full Stack Developer",
-                            ][i - 1]}
+                                "JavaScript Expert",
+                                "Python Specialist",
+                                "Full Stack Developer",
+                              ][i - 1]}
                       </p>
                       <button
                         className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
@@ -917,21 +940,21 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                           : isTrainer
                             ? ["Tech Academy", "Edureka"][i - 1]
                             : ["Google for Education", "Microsoft Learn"][
-                            i - 1
-                            ]}
+                                i - 1
+                              ]}
                       </h4>
                       <p className={`text-xs ${theme.textMuted} mt-0.5`}>
                         {isStudent
                           ? ["184,992 followers", "707,448 followers"][i - 1]
                           : isTrainer
                             ? [
-                              "45 trainers • 1200 students",
-                              "120+ trainers • 5000+ students",
-                            ][i - 1]
+                                "45 trainers • 1200 students",
+                                "120+ trainers • 5000+ students",
+                              ][i - 1]
                             : [
-                              "Corporate Training Partner",
-                              "Certification Provider",
-                            ][i - 1]}
+                                "Corporate Training Partner",
+                                "Certification Provider",
+                              ][i - 1]}
                       </p>
                       <button
                         className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}

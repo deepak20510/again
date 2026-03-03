@@ -1,4 +1,5 @@
 import client from "../../db.js";
+import { withRetry } from "../../utils/dbHelper.js";
 import {
   createPostSchema,
   updatePostSchema,
@@ -391,21 +392,23 @@ export const deleteReviewService = async (reviewId, userId) => {
 /* ================= GET POST REVIEWS ================= */
 
 export const getPostReviewsService = async (postId) => {
-  const reviews = await client.postReview.findMany({
-    where: { postId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          profilePicture: true,
+  return withRetry(async () => {
+    const reviews = await client.postReview.findMany({
+      where: { postId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            profilePicture: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    });
 
-  return reviews;
+    return reviews;
+  });
 };

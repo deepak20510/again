@@ -394,6 +394,10 @@ class ApiService {
     return this.request("/messaging/conversations");
   }
 
+  static async getAvailableUsers() {
+    return this.request("/messaging/available-users");
+  }
+
   static async sendMessage(data) {
     return this.request("/messaging/send", {
       method: "POST",

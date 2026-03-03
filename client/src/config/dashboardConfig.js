@@ -8,7 +8,6 @@ export const DASHBOARD_CONFIG = {
         { id: "connection", label: "Connection", icon: "Users" },
         { id: "for-you", label: "For You", icon: "Briefcase" },
         { id: "messaging", label: "Messaging", icon: "MessageSquare" },
-        { id: "notifications", label: "Notifications", icon: "Bell" },
       ],
     },
     leftSidebar: {
@@ -45,8 +44,6 @@ export const DASHBOARD_CONFIG = {
         { id: "my-courses", label: "My Courses", icon: "BookOpen" },
         { id: "students", label: "Students", icon: "Users" },
         { id: "messaging", label: "Messaging", icon: "MessageSquare" },
-        { id: "earnings", label: "Earnings", icon: "DollarSign" },
-        { id: "notifications", label: "Notifications", icon: "Bell" },
       ],
     },
     leftSidebar: {
@@ -58,10 +55,7 @@ export const DASHBOARD_CONFIG = {
       },
       menuItems: [
         { id: "my-courses", label: "My Courses", icon: "BookOpen" },
-        { id: "students", label: "My Students", icon: "Users" },
-        { id: "earnings", label: "Earnings", icon: "DollarSign" },
         { id: "reviews", label: "Reviews", icon: "Star" },
-        { id: "analytics", label: "Analytics", icon: "BarChart3" },
       ],
     },
     feedSection: {
@@ -84,9 +78,7 @@ export const DASHBOARD_CONFIG = {
       navItems: [
         { id: "hire-trainers", label: "Hire Trainers", icon: "UserPlus" },
         { id: "my-trainers", label: "My Trainers", icon: "Users" },
-        { id: "analytics", label: "Analytics", icon: "BarChart3" },
         { id: "messaging", label: "Messaging", icon: "MessageSquare" },
-        { id: "notifications", label: "Notifications", icon: "Bell" },
       ],
     },
     leftSidebar: {
@@ -101,8 +93,6 @@ export const DASHBOARD_CONFIG = {
         { id: "find-trainers", label: "Find Trainers", icon: "Search" },
         { id: "hired-trainers", label: "Hired Trainers", icon: "Users" },
         { id: "post-job", label: "Post Training Job", icon: "Briefcase" },
-        { id: "performance", label: "Performance", icon: "TrendingUp" },
-        { id: "payments", label: "Payments", icon: "CreditCard" },
       ],
     },
     feedSection: {

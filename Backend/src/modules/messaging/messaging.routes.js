@@ -8,6 +8,7 @@ router.use(authenticate);
 
 router.post("/conversation", messagingController.getOrCreateConversation);
 router.get("/conversations", messagingController.getConversations);
+router.get("/available-users", messagingController.getAvailableUsers);
 router.post("/send", messagingController.sendMessage);
 router.get("/:conversationId/messages", messagingController.getMessages);
 router.patch("/read/:conversationId", messagingController.markAsRead);
