@@ -151,6 +151,8 @@ export const sendOTPEmail = async (email, otp) => {
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log(`[Email] OTP sent to ${email}`);
+    console.log(`[Email] Message ID: ${info.messageId}`);
+    console.log(`[Email] Response: ${info.response}`);
     
     // If using Ethereal, show the preview URL
     if (info.ethereal) {
@@ -158,7 +160,7 @@ export const sendOTPEmail = async (email, otp) => {
       console.log(`[Email] OTP Code: ${otp}`);
     }
     
-    return { success: true };
+    return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error("[Email] Error sending OTP:", error);
     throw new Error("Failed to send OTP email");
