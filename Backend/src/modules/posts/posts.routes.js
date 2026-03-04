@@ -25,7 +25,7 @@ const router = express.Router();
 // Protected routes (must come BEFORE /:postId to avoid route conflict)
 router.get(
   "/my-posts",
-  authMiddleware(["TRAINER", "INSTITUTION", "STUDENT"]),
+  authMiddleware(), // Allow all authenticated users
   validate(getPostsSchema, "query"),
   getMyPosts,
 );

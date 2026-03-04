@@ -1,5 +1,6 @@
 import client from "../../db.js";
 import xss from "xss";
+import { generateInstitutionUniqueId } from "../../utils/uniqueIdGenerator.js";
 
 export const createInstitutionProfileService = async (userId, data) => {
   const user = await client.user.findUnique({
@@ -19,14 +20,19 @@ export const createInstitutionProfileService = async (userId, data) => {
     throw new Error("Institution profile already exists");
   }
 
+  // Generate unique ID
+  const uniqueId = await generateInstitutionUniqueId();
+
   const profile = await client.institutionProfile.create({
     data: {
       userId,
+      uniqueId,
       name: xss(data.name),
       location: xss(data.location),
     },
     select: {
       id: true,
+      uniqueId: true,
       name: true,
       location: true,
       createdAt: true,
@@ -41,6 +47,7 @@ export const getMyInstitutionProfileService = async (userId) => {
     where: { userId },
     select: {
       id: true,
+      uniqueId: true,
       name: true,
       location: true,
       createdAt: true,
@@ -56,7 +63,11 @@ export const getMyInstitutionProfileService = async (userId) => {
 
 export const searchInstitutionsService = async (filters = {}) => {
   const { location, page = 1, limit = 12 } = filters;
-  const skip = (page - 1) * limit;
+  
+  // Convert to numbers to ensure Prisma gets integers
+  const pageNum = parseInt(page) || 1;
+  const limitNum = parseInt(limit) || 12;
+  const skip = (pageNum - 1) * limitNum;
 
   const where = {
     user: {
@@ -85,7 +96,7 @@ export const searchInstitutionsService = async (filters = {}) => {
     },
     orderBy: { createdAt: "desc" },
     skip,
-    take: parseInt(limit),
+    take: limitNum,
   });
 
   const total = await client.institutionProfile.count({ where });
@@ -93,10 +104,10 @@ export const searchInstitutionsService = async (filters = {}) => {
   return {
     institutions,
     pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
+      page: pageNum,
+      limit: limitNum,
       total,
-      pages: Math.ceil(total / parseInt(limit)),
+      pages: Math.ceil(total / limitNum),
     },
   };
 };

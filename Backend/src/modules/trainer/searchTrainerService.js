@@ -1,7 +1,11 @@
 import client from "../../db.js";
 
-export const searchTrainersService = async (filters) => {
-  const { skill, location, minExp, maxExp, page, limit, sort } = filters;
+export const searchTrainersService = async (filters = {}) => {
+  const { skill, location, minExp, maxExp, page = 1, limit = 10, sort = 'newest' } = filters;
+
+  // Convert to numbers to ensure Prisma gets integers
+  const pageNum = parseInt(page) || 1;
+  const limitNum = parseInt(limit) || 10;
 
   const where = {
     isActive: true,
@@ -36,8 +40,8 @@ export const searchTrainersService = async (filters) => {
     client.trainerProfile.findMany({
       where,
       orderBy: orderByMap[sort] || { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum,
       include: {
         user: {
           select: {
@@ -60,8 +64,8 @@ export const searchTrainersService = async (filters) => {
     data: trainers,
     meta: {
       total,
-      page,
-      totalPages: Math.ceil(total / limit),
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
     },
   };
 };

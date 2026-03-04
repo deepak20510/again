@@ -632,6 +632,207 @@ export const getAnalytics = async (req, res) => {
 };
 
 /**
+ * Get all verification requests
+ * GET /admin/verification-requests
+ */
+export const getVerificationRequests = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const where = {};
+    if (status) where.status = status;
+
+    const [requests, totalCount] = await Promise.all([
+      prisma.verificationRequest.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              profilePicture: true,
+              isVerified: true,
+              trainerProfile: {
+                select: {
+                  id: true,
+                  uniqueId: true,
+                  verified: true,
+                  rating: true,
+                  experience: true
+                }
+              },
+              institutionProfile: {
+                select: {
+                  id: true,
+                  uniqueId: true,
+                  name: true,
+                  rating: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.verificationRequest.count({ where })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        requests,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalCount,
+          pages: Math.ceil(totalCount / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error getting verification requests:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Approve or reject verification request
+ * PATCH /admin/verification-requests/:id/review
+ */
+export const reviewVerificationRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, adminNote } = req.body; // action: "APPROVE" or "REJECT"
+    const adminId = req.user.id;
+
+    if (!["APPROVE", "REJECT"].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid action. Must be APPROVE or REJECT"
+      });
+    }
+
+    const verificationRequest = await prisma.verificationRequest.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+
+    if (!verificationRequest) {
+      return res.status(404).json({
+        success: false,
+        message: "Verification request not found"
+      });
+    }
+
+    if (verificationRequest.status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: "This request has already been reviewed"
+      });
+    }
+
+    const newStatus = action === "APPROVE" ? "ACCEPTED" : "REJECTED";
+
+    // Update verification request
+    const updatedRequest = await prisma.verificationRequest.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        adminNote: adminNote || null,
+        reviewedAt: new Date(),
+        reviewedBy: adminId
+      }
+    });
+
+    // If approved, update user and profile verification status
+    if (action === "APPROVE") {
+      await prisma.user.update({
+        where: { id: verificationRequest.userId },
+        data: { isVerified: true }
+      });
+
+      // Update trainer profile if applicable
+      if (verificationRequest.user.role === "TRAINER") {
+        await prisma.trainerProfile.updateMany({
+          where: { userId: verificationRequest.userId },
+          data: { verified: true }
+        });
+      }
+
+      // Create notification
+      await prisma.notification.create({
+        data: {
+          userId: verificationRequest.userId,
+          type: "VERIFICATION",
+          title: "Verification Approved",
+          message: "Congratulations! Your verification request has been approved.",
+          link: `/profile`
+        }
+      });
+    } else {
+      // Create notification for rejection
+      await prisma.notification.create({
+        data: {
+          userId: verificationRequest.userId,
+          type: "VERIFICATION",
+          title: "Verification Request Rejected",
+          message: adminNote || "Your verification request has been rejected. Please contact support for more information.",
+          link: `/profile`
+        }
+      });
+    }
+
+    // Log the action
+    await prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: `VERIFICATION_${action}`,
+        resource: "VerificationRequest",
+        details: {
+          requestId: id,
+          targetUserId: verificationRequest.userId,
+          targetUserEmail: verificationRequest.user.email,
+          adminNote
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Verification request ${action.toLowerCase()}d successfully`,
+      data: updatedRequest
+    });
+  } catch (error) {
+    console.error("Error reviewing verification request:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+/**
  * Transfer admin privileges to another user
  * POST /admin/transfer-admin
  */

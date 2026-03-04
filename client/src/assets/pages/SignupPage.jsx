@@ -170,12 +170,12 @@ export default function SignupPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="w-full bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-blue-600 text-white p-2 rounded-lg">🎓</div>
-            <h1 className="text-xl font-bold text-gray-800">Tutroid</h1>
+            <div className="bg-blue-600 text-white p-2 rounded-lg text-sm sm:text-base">🎓</div>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-800">Tutroid</h1>
           </div>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-xs sm:text-base">
             Already have an account?{" "}
             <button
               onClick={() => navigate("/login")}
@@ -187,51 +187,51 @@ export default function SignupPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-12">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-center mb-8 sm:mb-12 overflow-x-auto">
+          <div className="flex items-center gap-2 sm:gap-4 whitespace-nowrap">
             <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+              className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-base ${
                 step === 1
                   ? "bg-blue-600 text-white"
                   : "bg-blue-100 text-blue-600"
               }`}
             >
-              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">
+              <span className="w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-white/20 flex items-center justify-center text-xs sm:text-sm font-bold">
                 1
               </span>
-              <span className="font-medium">Select Type</span>
+              <span className="font-medium hidden sm:inline">Select Type</span>
             </div>
-            <ArrowRight className="w-5 h-5 text-gray-400" />
+            <ArrowRight className="w-4 sm:w-5 h-4 sm:h-5 text-gray-400 flex-shrink-0" />
             <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+              className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-base ${
                 step === 2
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-400"
               }`}
             >
-              <span className="w-6 h-6 rounded-full bg-current/20 flex items-center justify-center text-sm font-bold">
+              <span className="w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-current/20 flex items-center justify-center text-xs sm:text-sm font-bold">
                 2
               </span>
-              <span className="font-medium">Your Details</span>
+              <span className="font-medium hidden sm:inline">Your Details</span>
             </div>
           </div>
         </div>
 
         {step === 1 ? (
-          <div className="grid lg:grid-cols-2 gap-12 items-start">
+          <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-start">
             {/* Left - User Type Selection */}
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
                 Join as a...
               </h2>
-              <p className="text-gray-600 mb-8">
+              <p className="text-gray-600 text-sm sm:text-base mb-6 sm:mb-8">
                 Select how you want to use our platform. You can always change
                 this later.
               </p>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {Object.values(USER_TYPES).map((type) => {
                   const config = userTypeConfig[type];
                   const Icon = config.icon;
@@ -241,32 +241,32 @@ export default function SignupPage() {
                     <button
                       key={type}
                       onClick={() => setSelectedType(type)}
-                      className={`w-full p-5 rounded-2xl border-2 text-left transition-all duration-300 ${
+                      className={`w-full p-4 sm:p-5 rounded-2xl border-2 text-left transition-all duration-300 ${
                         isSelected
                           ? `${config.borderColor} ${config.bgColor} ring-2 ring-offset-2 ring-${config.color}-500`
                           : "border-gray-200 bg-white hover:border-gray-300"
                       }`}
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         <div
-                          className={`w-12 h-12 rounded-xl ${config.iconBg} ${config.iconColor} flex items-center justify-center shrink-0`}
+                          className={`w-10 sm:w-12 h-10 sm:h-12 rounded-xl ${config.iconBg} ${config.iconColor} flex items-center justify-center shrink-0`}
                         >
-                          <Icon size={24} />
+                          <Icon size={20} />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-900 text-lg">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-semibold text-gray-900 text-base sm:text-lg">
                               {config.title}
                             </h3>
                             {isSelected && (
                               <div
-                                className={`w-6 h-6 rounded-full ${config.selectedBg} flex items-center justify-center`}
+                                className={`w-5 sm:w-6 h-5 sm:h-6 rounded-full ${config.selectedBg} flex items-center justify-center flex-shrink-0`}
                               >
-                                <Check size={14} className="text-white" />
+                                <Check size={12} className="text-white" />
                               </div>
                             )}
                           </div>
-                          <p className="text-gray-500 text-sm mt-1">
+                          <p className="text-gray-500 text-xs sm:text-sm mt-1">
                             {config.description}
                           </p>
                         </div>
@@ -278,7 +278,7 @@ export default function SignupPage() {
 
               <button
                 onClick={() => setStep(2)}
-                className="w-full mt-8 bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                className="w-full mt-6 sm:mt-8 bg-gray-900 hover:bg-gray-800 text-white py-2 sm:py-4 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 Continue as {selectedConfig.title}
                 <ArrowRight size={20} />
@@ -287,39 +287,39 @@ export default function SignupPage() {
 
             {/* Right - Features Preview */}
             <div
-              className={`${selectedConfig.bgColor} rounded-3xl p-8 border ${selectedConfig.borderColor}`}
+              className={`${selectedConfig.bgColor} rounded-3xl p-6 sm:p-8 border ${selectedConfig.borderColor}`}
             >
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div
-                  className={`w-14 h-14 rounded-2xl ${selectedConfig.iconBg} ${selectedConfig.iconColor} flex items-center justify-center`}
+                  className={`w-12 sm:w-14 h-12 sm:h-14 rounded-2xl ${selectedConfig.iconBg} ${selectedConfig.iconColor} flex items-center justify-center flex-shrink-0`}
                 >
-                  <SelectedIcon size={28} />
+                  <SelectedIcon size={24} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-xl">
+                  <h3 className="font-bold text-gray-900 text-lg sm:text-xl">
                     {selectedConfig.title} Benefits
                   </h3>
-                  <p className="text-gray-500">
+                  <p className="text-gray-500 text-xs sm:text-sm">
                     Everything you need to succeed
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {selectedConfig.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3">
+                  <div key={index} className="flex items-center gap-2 sm:gap-3">
                     <div
-                      className={`w-6 h-6 rounded-full ${selectedConfig.selectedBg} flex items-center justify-center shrink-0`}
+                      className={`w-5 sm:w-6 h-5 sm:h-6 rounded-full ${selectedConfig.selectedBg} flex items-center justify-center shrink-0`}
                     >
-                      <Check size={14} className="text-white" />
+                      <Check size={12} className="text-white" />
                     </div>
-                    <span className="text-gray-700">{feature}</span>
+                    <span className="text-gray-700 text-sm sm:text-base">{feature}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-8 p-4 bg-white/50 rounded-xl">
-                <p className="text-sm text-gray-600">
+              <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-white/50 rounded-xl">
+                <p className="text-xs sm:text-sm text-gray-600">
                   <span className="font-semibold">Free to get started.</span> No
                   credit card required. Upgrade anytime.
                 </p>
@@ -330,23 +330,23 @@ export default function SignupPage() {
           <div className="max-w-xl mx-auto">
             <button
               onClick={() => setStep(1)}
-              className="text-gray-500 hover:text-gray-700 mb-6 flex items-center gap-2"
+              className="text-gray-500 hover:text-gray-700 mb-4 sm:mb-6 flex items-center gap-2 text-sm sm:text-base"
             >
               ← Back to selection
             </button>
 
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-              <div className="flex items-center gap-4 mb-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8">
+              <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div
-                  className={`w-12 h-12 rounded-xl ${selectedConfig.iconBg} ${selectedConfig.iconColor} flex items-center justify-center`}
+                  className={`w-10 sm:w-12 h-10 sm:h-12 rounded-xl ${selectedConfig.iconBg} ${selectedConfig.iconColor} flex items-center justify-center flex-shrink-0`}
                 >
-                  <SelectedIcon size={24} />
+                  <SelectedIcon size={20} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                     Create {selectedConfig.title} Account
                   </h2>
-                  <p className="text-gray-500">
+                  <p className="text-gray-500 text-xs sm:text-sm">
                     Join thousands of {selectedConfig.title.toLowerCase()}s
                     already on the platform
                   </p>
@@ -355,14 +355,14 @@ export default function SignupPage() {
 
               {/* Error Display */}
               {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <AlertTriangle className="w-4 sm:w-5 h-4 sm:h-5 text-red-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-red-600 text-sm font-medium">
+                      <p className="text-red-600 text-xs sm:text-sm font-medium">
                         {error}
                       </p>
-                      <p className="text-red-500 text-xs mt-1">
+                      <p className="text-red-500 text-[10px] sm:text-xs mt-1">
                         {error.includes("already registered")
                           ? "This email is already registered. Try logging in or use a different email address."
                           : "Registration failed. Please check your information and try again."}
@@ -372,9 +372,9 @@ export default function SignupPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                     Email Address
                   </label>
                   <input
@@ -383,13 +383,13 @@ export default function SignupPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="you@example.com"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                     Password
                   </label>
                   <div className="relative">
@@ -399,22 +399,22 @@ export default function SignupPage() {
                       value={formData.password}
                       onChange={handleInputChange}
                       placeholder="Create a strong password"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all pr-12"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all pr-10 sm:pr-12 text-sm sm:text-base"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                       Phone Number
                     </label>
                     <input
@@ -423,13 +423,13 @@ export default function SignupPage() {
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="+1 (555) 000-0000"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base"
                     />
                   </div>
 
                   {selectedType === USER_TYPES.INSTITUTE && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                         Organization Name
                       </label>
                       <input
@@ -438,7 +438,7 @@ export default function SignupPage() {
                         value={formData.organization}
                         onChange={handleInputChange}
                         placeholder="Your institution name"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base"
                         required
                       />
                     </div>
@@ -446,7 +446,7 @@ export default function SignupPage() {
 
                   {selectedType === USER_TYPES.TRAINER && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                         Expertise Area
                       </label>
                       <input
@@ -455,23 +455,23 @@ export default function SignupPage() {
                         value={formData.organization}
                         onChange={handleInputChange}
                         placeholder="e.g., Web Development"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm sm:text-base"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-start gap-3 pt-2">
+                <div className="flex items-start gap-2 sm:gap-3 pt-2">
                   <input
                     type="checkbox"
                     name="agreeTerms"
                     id="agreeTerms"
                     checked={formData.agreeTerms}
                     onChange={handleInputChange}
-                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                    className="w-4 sm:w-5 h-4 sm:h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5 flex-shrink-0"
                     required
                   />
-                  <label htmlFor="agreeTerms" className="text-sm text-gray-600">
+                  <label htmlFor="agreeTerms" className="text-xs sm:text-sm text-gray-600">
                     I agree to the{" "}
                     <a href="#" className="text-blue-600 hover:underline">
                       Terms of Service
@@ -485,15 +485,15 @@ export default function SignupPage() {
 
                 <button
                   type="submit"
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-gray-900 hover:bg-gray-800 text-white py-2 sm:py-4 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
                   Create Account
                   <ArrowRight size={20} />
                 </button>
               </form>
 
-              <div className="mt-6 text-center">
-                <p className="text-gray-500 text-sm">
+              <div className="mt-4 sm:mt-6 text-center">
+                <p className="text-gray-500 text-xs sm:text-sm">
                   Already have an account?{" "}
                   <button
                     onClick={() => navigate("/login")}

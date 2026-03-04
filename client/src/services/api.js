@@ -632,6 +632,38 @@ class ApiService {
       return { success: true, data: [] };
     }
   }
+
+  /* ================= VERIFICATION ================= */
+
+  static async requestVerification(message = null) {
+    return this.request("/verification/request", {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+  }
+
+  static async getVerificationStatus() {
+    return this.request("/verification/status");
+  }
+
+  static async cancelVerificationRequest() {
+    return this.request("/verification/request", {
+      method: "DELETE",
+    });
+  }
+
+  // Admin endpoints
+  static async getVerificationRequests(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/admin/verification-requests${query ? `?${query}` : ""}`);
+  }
+
+  static async reviewVerificationRequest(requestId, action, adminNote = null) {
+    return this.request(`/admin/verification-requests/${requestId}/review`, {
+      method: "PATCH",
+      body: JSON.stringify({ action, adminNote }),
+    });
+  }
 }
 
 export default ApiService;

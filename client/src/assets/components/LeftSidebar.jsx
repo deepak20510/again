@@ -3,6 +3,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { CheckCircle2 } from "lucide-react";
 
 export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
   const config = DASHBOARD_CONFIG[userType];
@@ -88,16 +89,16 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
   const stats = getStats();
 
   return (
-    <div className="space-y-4">
+    <div className="hidden md:block space-y-4">
       {/* Profile Card */}
       <div
         onClick={handleProfileClick}
-        className={`${theme.cardBg} rounded-xl shadow-lg p-5 text-center border ${theme.cardBorder} transition-all duration-300 cursor-pointer ${theme.hoverBg}`}
+        className={`${theme.cardBg} rounded-xl shadow-lg p-4 sm:p-5 text-center border ${theme.cardBorder} transition-all duration-300 cursor-pointer ${theme.hoverBg}`}
       >
         <div className="relative inline-block">
           <img
             src={currentProfile.avatar}
-            className={`w-20 h-20 rounded-full mx-auto mb-3 ring-2 ${theme.accentBg}/50 ring-offset-2 ring-offset-transparent transition-all duration-300`}
+            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-3 ring-2 ${theme.accentBg}/50 ring-offset-2 ring-offset-transparent transition-all duration-300`}
             alt={currentProfile.name}
           />
           <div
@@ -106,9 +107,12 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
         </div>
 
         <h3
-          className={`font-semibold text-lg ${theme.textPrimary} transition-colors duration-300`}
+          className={`font-semibold text-base sm:text-lg ${theme.textPrimary} transition-colors duration-300 flex items-center justify-center gap-2`}
         >
           {currentProfile.name}
+          {authUser?.isVerified && (
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" title="Verified" />
+          )}
         </h3>
         <p
           className={`text-sm ${theme.accentColor} font-medium transition-colors duration-300`}

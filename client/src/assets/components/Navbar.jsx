@@ -22,6 +22,9 @@ import {
   Home,
   Compass,
   Check,
+  CheckCircle2,
+  Menu,
+  X,
 } from "lucide-react";
 import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 import { useTheme } from "../../context/ThemeContext";
@@ -60,11 +63,13 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMessaging, setShowMessaging] = useState(false);
+  const [messagingUserId, setMessagingUserId] = useState(null);
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const userMenuRef = useRef(null);
   const notificationRef = useRef(null);
 
@@ -106,6 +111,21 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
     };
   }, [socket]);
 
+  // Listen for custom event to open messaging with specific user
+  useEffect(() => {
+    const handleOpenMessaging = (event) => {
+      const { userId } = event.detail;
+      setMessagingUserId(userId || null);
+      setShowMessaging(true);
+    };
+
+    window.addEventListener("openMessaging", handleOpenMessaging);
+
+    return () => {
+      window.removeEventListener("openMessaging", handleOpenMessaging);
+    };
+  }, []);
+
   const loadNotifications = async () => {
     try {
       setLoadingNotifications(true);
@@ -131,13 +151,15 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
     }
   };
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = async (e) => {
+    e?.stopPropagation(); // Prevent any parent handlers
     try {
       await ApiService.markAllNotificationsAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error("Failed to mark all as read:", error);
+      alert('Failed to mark all notifications as read. Please try again.');
     }
   };
 
@@ -146,7 +168,20 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
       markAsRead(notification.id);
     }
     if (notification.link) {
-      navigate(notification.link);
+      // For message notifications, trigger custom event to open messaging panel
+      if (notification.type === "MESSAGE") {
+        // Handle new format: /messages?userId=xxx
+        if (notification.link.startsWith("/messages?userId=")) {
+          const userId = notification.link.split("userId=")[1];
+          window.dispatchEvent(new CustomEvent("openMessaging", { detail: { userId } }));
+        } 
+        // Handle old format: /messages/conversationId - just open messaging panel
+        else if (notification.link.startsWith("/messages/")) {
+          window.dispatchEvent(new CustomEvent("openMessaging", { detail: {} }));
+        }
+      } else {
+        navigate(notification.link);
+      }
       setShowNotifications(false);
     }
   };
@@ -171,12 +206,18 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
   };
 
   const getProfileRoute = () => {
-    const username = user?.username;
-    if (!username) return "/student/profile"; // Fallback if no username
+    // Use username if available, otherwise fallback to user ID
+    const identifier = user?.username || user?.id;
+    if (!identifier) {
+      // If neither username nor ID is available, return base profile route
+      if (userType === USER_TYPES.STUDENT) return "/student/profile";
+      if (userType === USER_TYPES.TRAINER) return "/trainer/profile";
+      return "/institute/profile";
+    }
     
-    if (userType === USER_TYPES.STUDENT) return `/student/profile/${username}`;
-    if (userType === USER_TYPES.TRAINER) return `/trainer/profile/${username}`;
-    return `/institute/profile/${username}`;
+    if (userType === USER_TYPES.STUDENT) return `/student/profile/${identifier}`;
+    if (userType === USER_TYPES.TRAINER) return `/trainer/profile/${identifier}`;
+    return `/institute/profile/${identifier}`;
   };
 
   const getDashboardRoute = () => {
@@ -193,22 +234,22 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
 
   return (
     <header className={`${theme.navbarBg} shadow-lg sticky top-0 z-50 transition-all duration-300 border-b ${theme.navbarBorder}`}>
-      <div className="max-w-7xl mx-auto px-6 py-2.5 flex justify-between items-center gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex justify-between items-center gap-2 sm:gap-4">
         {/* Logo */}
         <div
-          className="flex items-center gap-2.5 cursor-pointer flex-shrink-0"
+          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-shrink-0"
           onClick={() => navigate(getDashboardRoute())}
         >
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-            <Building2 className="text-white w-5 h-5" />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+            <Building2 className="text-white w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <h1 className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-bold text-xl tracking-tight">
+          <h1 className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-bold text-lg sm:text-xl tracking-tight">
             Tutroid
           </h1>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative flex-1 max-w-md hidden md:block">
+        {/* Search Bar - Hide on mobile, show on tablet+ */}
+        <div className="relative flex-1 max-w-md hidden sm:block">
           <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${theme.textMuted} w-4 h-4`} />
           <input
             value={searchQuery}
@@ -221,9 +262,9 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
         </div>
 
         {/* Right Side */}
-        <div className="flex items-center gap-1">
-          {/* Nav Items (including Notifications) */}
-          <nav className="flex items-center gap-1">
+        <div className="flex items-center gap-1 sm:gap-1">
+          {/* Nav Items (including Notifications) - Desktop Only */}
+          <nav className="hidden lg:flex items-center gap-1">
             {/* Notification Item */}
             <div className="relative" ref={notificationRef}>
               <button
@@ -257,7 +298,10 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
                     <h3 className={`font-semibold ${theme.textPrimary}`}>Notifications</h3>
                     {unreadCount > 0 && (
                       <button
-                        onClick={markAllAsRead}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAllAsRead(e);
+                        }}
                         className={`text-sm ${theme.accentColor} hover:underline flex items-center gap-1`}
                       >
                         <Check size={14} />
@@ -330,12 +374,12 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
           </nav>
 
           {/* Divider */}
-          <div className={`w-px h-8 ${theme.divider} mx-2 hidden md:block`}></div>
+          <div className={`w-px h-8 ${theme.divider} mx-2 hidden lg:block`}></div>
 
-          {/* Theme Toggle */}
+          {/* Theme Toggle - Hide on small mobile */}
           <button
             onClick={toggleTheme}
-            className={`relative p-2 rounded-full transition-all duration-300 ${isDarkMode
+            className={`hidden sm:block relative p-2 rounded-full transition-all duration-300 ${isDarkMode
                 ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30"
                 : "bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200"
               }`}
@@ -359,13 +403,13 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className={`flex items-center gap-2 p-1.5 pr-3 rounded-full transition-all duration-300 ${theme.hoverBg} border ${showUserMenu ? theme.cardBorder : "border-transparent"}`}
+              className={`flex items-center gap-2 p-1.5 pr-2 sm:pr-3 rounded-full transition-all duration-300 ${theme.hoverBg} border ${showUserMenu ? theme.cardBorder : "border-transparent"}`}
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-4 h-4 text-white" />
+                  <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 )}
               </div>
               <div className="hidden md:block text-left">
@@ -384,7 +428,12 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
               <div className={`absolute right-0 top-full mt-2 w-56 ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} overflow-hidden z-50`}>
                 {/* Profile Banner */}
                 <div className={`px-4 py-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-b ${theme.divider}`}>
-                  <p className={`font-semibold text-sm ${theme.textPrimary} truncate`}>{displayName}</p>
+                  <p className={`font-semibold text-sm ${theme.textPrimary} truncate flex items-center gap-2`}>
+                    {displayName}
+                    {user?.isVerified && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0" title="Verified" />
+                    )}
+                  </p>
                   <p className={`text-xs ${theme.textMuted} truncate`}>{user?.email}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block font-medium ${userType === USER_TYPES.TRAINER ? "bg-indigo-500/20 text-indigo-400" :
                       userType === USER_TYPES.INSTITUTE ? "bg-emerald-500/20 text-emerald-400" :
@@ -431,11 +480,180 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
               </div>
             )}
           </div>
+
+          {/* Hamburger Menu Button - Mobile/Tablet Only */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className={`lg:hidden p-2 rounded-lg ${theme.hoverBg} transition-colors border ${theme.cardBorder}`}
+            aria-label="Toggle menu"
+          >
+            {showMobileMenu ? (
+              <X size={22} className={theme.textPrimary} />
+            ) : (
+              <Menu size={22} className={theme.textPrimary} />
+            )}
+          </button>
         </div>
       </div>
 
+      {/* Mobile Menu Drawer */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowMobileMenu(false)}
+          />
+          
+          {/* Drawer */}
+          <div className={`fixed inset-y-0 left-0 w-72 ${theme.cardBg} shadow-2xl animate-slide-in-left overflow-y-auto border-r ${theme.cardBorder}`}>
+            {/* Header */}
+            <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Building2 className="text-white w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className={`font-bold text-lg ${theme.textPrimary}`}>Tutroid</h2>
+                  <p className={`text-xs ${theme.textMuted} capitalize`}>{userType} Dashboard</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className={`p-2 rounded-lg ${theme.hoverBg} transition-colors`}
+              >
+                <X size={20} className={theme.textSecondary} />
+              </button>
+            </div>
+
+            {/* User Profile Section */}
+            <div className={`p-4 border-b ${theme.cardBorder}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-6 h-6 text-white" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-semibold text-sm ${theme.textPrimary} truncate flex items-center gap-2`}>
+                    {displayName}
+                    {user?.isVerified && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0" title="Verified" />
+                    )}
+                  </p>
+                  <p className={`text-xs ${theme.textMuted} truncate`}>{user?.email}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Navigation Items */}
+            <div className="p-4">
+              <p className={`text-xs font-semibold ${theme.textMuted} uppercase tracking-wider mb-3`}>
+                Navigation
+              </p>
+              <div className="space-y-1">
+                {/* Search Button */}
+                <button
+                  onClick={() => {
+                    handleSearchClick();
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                >
+                  <Search size={20} />
+                  <span className="font-medium">Search</span>
+                </button>
+
+                {/* Home Button */}
+                <button
+                  onClick={() => {
+                    navigate(getDashboardRoute());
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                >
+                  <Home size={20} />
+                  <span className="font-medium">Home</span>
+                </button>
+
+                {/* Other Nav Items - Filter out Students and My Courses */}
+                {navItems
+                  .filter(item => item.id !== 'students' && item.id !== 'my-courses')
+                  .map((item) => {
+                    const IconComponent = getIcon(item.icon);
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          handleNavItemClick(item);
+                          setShowMobileMenu(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                      >
+                        <IconComponent size={20} />
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className={`p-4 border-t ${theme.cardBorder}`}>
+              <p className={`text-xs font-semibold ${theme.textMuted} uppercase tracking-wider mb-3`}>
+                Quick Actions
+              </p>
+              <div className="space-y-1">
+                <button
+                  onClick={() => {
+                    navigate(getProfileRoute());
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                >
+                  <User size={20} />
+                  <span className="font-medium">View Profile</span>
+                </button>
+                
+                <button
+                  onClick={toggleTheme}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                >
+                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                  <span className="font-medium">{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Logout */}
+            <div className={`p-4 border-t ${theme.cardBorder} mt-auto`}>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-500/10 transition-all duration-200"
+              >
+                <LogOut size={20} />
+                <span className="font-medium">Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Panels */}
-      <MessagingPanel isOpen={showMessaging} onClose={() => setShowMessaging(false)} />
+      <MessagingPanel 
+        isOpen={showMessaging} 
+        onClose={() => {
+          setShowMessaging(false);
+          setMessagingUserId(null);
+        }} 
+        initialUserId={messagingUserId}
+        key={messagingUserId || 'default'} // Force re-render when userId changes
+      />
       <DiscoveryPanel isOpen={showDiscovery} onClose={() => setShowDiscovery(false)} />
     </header>
   );

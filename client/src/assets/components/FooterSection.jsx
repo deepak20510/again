@@ -7,29 +7,29 @@ export default function FooterSection() {
   return (
     <>
       {/* ================= CTA SECTION ================= */}
-      <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-20">
-        <div className="max-w-4xl mx-auto text-center px-6">
-          <h2 className="text-4xl font-bold mb-6">
+      <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-12 sm:py-16 md:py-20">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">
             Ready to Start Your Journey?
           </h2>
 
-          <p className="text-lg text-blue-100 mb-10">
+          <p className="text-sm sm:text-base md:text-lg text-blue-100 mb-6 sm:mb-10">
             Join thousands of professionals and students building the future of
             education together.
           </p>
 
-          <div className="flex justify-center gap-6 flex-wrap">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-6 flex-wrap">
             <button
               onClick={() => navigate("/signup")}
-              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold 
-            transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+              className="bg-white text-blue-600 px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-semibold 
+            transition-all duration-300 hover:-translate-y-1 hover:shadow-lg text-sm sm:text-base"
             >
               Create Free Account
             </button>
 
             <button
-              className="border border-white px-8 py-3 rounded-lg font-semibold 
-            transition-all duration-300 hover:bg-white hover:text-blue-600 hover:-translate-y-1"
+              className="border border-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-semibold 
+            transition-all duration-300 hover:bg-white hover:text-blue-600 hover:-translate-y-1 text-sm sm:text-base"
             >
               Contact Sales
             </button>
@@ -38,18 +38,18 @@ export default function FooterSection() {
       </section>
 
       {/* ================= FOOTER ================= */}
-      <footer className="bg-gray-50 py-16 border-t">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12">
+      <footer className="bg-gray-50 py-12 sm:py-16 border-t">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
           {/* Brand Column */}
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-blue-600 text-white p-2 rounded-lg">
                 <GraduationCap size={20} />
               </div>
-              <h3 className="text-xl font-bold text-gray-800">Tutroid</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">Tutroid</h3>
             </div>
 
-            <p className="text-gray-600 text-sm leading-relaxed">
+            <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
               Empowering learning connections. The professional network
               connecting trainers, institutions, and students worldwide.
             </p>
@@ -57,8 +57,8 @@ export default function FooterSection() {
 
           {/* Platform */}
           <div>
-            <h4 className="font-semibold mb-4 text-gray-800">Platform</h4>
-            <ul className="space-y-3 text-gray-600 text-sm">
+            <h4 className="font-semibold mb-4 text-gray-800 text-sm sm:text-base">Platform</h4>
+            <ul className="space-y-2 sm:space-y-3 text-gray-600 text-xs sm:text-sm">
               <li className="hover:text-blue-600 transition cursor-pointer">
                 Browse Trainers
               </li>
@@ -76,8 +76,8 @@ export default function FooterSection() {
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold mb-4 text-gray-800">Company</h4>
-            <ul className="space-y-3 text-gray-600 text-sm">
+            <h4 className="font-semibold mb-4 text-gray-800 text-sm sm:text-base">Company</h4>
+            <ul className="space-y-2 sm:space-y-3 text-gray-600 text-xs sm:text-sm">
               <li className="hover:text-blue-600 transition cursor-pointer">
                 About Us
               </li>
@@ -95,8 +95,8 @@ export default function FooterSection() {
 
           {/* Legal */}
           <div>
-            <h4 className="font-semibold mb-4 text-gray-800">Legal</h4>
-            <ul className="space-y-3 text-gray-600 text-sm">
+            <h4 className="font-semibold mb-4 text-gray-800 text-sm sm:text-base">Legal</h4>
+            <ul className="space-y-2 sm:space-y-3 text-gray-600 text-xs sm:text-sm">
               <li className="hover:text-blue-600 transition cursor-pointer">
                 Terms of Service
               </li>
@@ -111,7 +111,7 @@ export default function FooterSection() {
         </div>
 
         {/* Bottom Divider */}
-        <div className="max-w-7xl mx-auto px-6 mt-12 pt-6 border-t text-center text-sm text-gray-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-12 pt-6 sm:pt-6 border-t text-center text-xs sm:text-sm text-gray-500">
           © {new Date().getFullYear()} Tutroid. All rights reserved.
         </div>
       </footer>

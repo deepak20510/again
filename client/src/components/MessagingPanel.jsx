@@ -16,22 +16,56 @@ import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { formatDistanceToNow } from "../utils/dateUtils";
 
-const MessagingPanel = ({ isOpen, onClose }) => {
+const MessagingPanel = ({ isOpen, onClose, initialUserId }) => {
   const [conversations, setConversations] = useState([]);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState("conversations");
+  const [pendingUserId, setPendingUserId] = useState(null);
   const { socket } = useSocket();
   const { theme } = useTheme();
 
   useEffect(() => {
     if (isOpen) {
+      // Load conversations immediately
       loadConversations();
-      loadAvailableUsers();
+      // Only load available users when switching to "users" view
+      if (view === "users" && availableUsers.length === 0) {
+        loadAvailableUsers();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, view]);
+
+  // Store initialUserId when panel opens
+  useEffect(() => {
+    if (isOpen && initialUserId) {
+      setPendingUserId(initialUserId);
+    } else if (!isOpen) {
+      // Reset when panel closes
+      setPendingUserId(null);
+      setSelectedConversation(null);
+    }
+  }, [isOpen, initialUserId]);
+
+  // Handle opening conversation with specific user after conversations load
+  useEffect(() => {
+    if (pendingUserId && conversations.length > 0 && !loading) {
+      const existingConv = conversations.find(conv => 
+        conv.participants.some(p => p.id === pendingUserId)
+      );
+      if (existingConv) {
+        setSelectedConversation(existingConv);
+        setView("conversations");
+        setPendingUserId(null); // Clear pending
+      } else {
+        // Start new conversation with this user
+        startConversation(pendingUserId);
+        setPendingUserId(null); // Clear pending
+      }
+    }
+  }, [pendingUserId, conversations, loading]);
 
   // helper used in multiple places so we can update the conversation list
   const { user } = useAuth();
@@ -159,7 +193,7 @@ const MessagingPanel = ({ isOpen, onClose }) => {
 
       {/* Panel - LinkedIn Style */}
       <div
-        className={`fixed bottom-0 right-6 w-[420px] h-[600px] ${theme.cardBg} rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}
+        className={`fixed inset-0 sm:bottom-0 sm:right-6 sm:inset-auto w-full sm:w-[420px] h-full sm:h-[600px] ${theme.cardBg} sm:rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}
       >
         {/* Header */}
         <div
@@ -476,16 +510,14 @@ const ChatWindowModal = ({
 
   const loadMessages = async () => {
     try {
-      setLoading(true);
       const response = await ApiService.getMessages(conversation.id);
       setMessages(response.data || []);
 
       // clear our own unread counter locally
       onConversationRead && onConversationRead(conversation.id);
-
-      setLoading(false);
     } catch (error) {
       console.error("Failed to load messages:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -536,7 +568,7 @@ const ChatWindowModal = ({
       />
 
       <div
-        className={`fixed bottom-0 right-[460px] w-[420px] h-[600px] ${theme.cardBg} rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}
+        className={`fixed inset-0 sm:bottom-0 sm:right-[460px] sm:inset-auto w-full sm:w-[420px] h-full sm:h-[600px] ${theme.cardBg} sm:rounded-t-xl shadow-2xl z-50 flex flex-col border-t-2 ${theme.cardBorder}`}
       >
         {/* Header */}
         <div

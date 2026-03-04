@@ -91,6 +91,7 @@ model User {
 model TrainerProfile {
   id                String    @id @default(uuid())
   userId            String    @unique
+  uniqueId          String?   @unique // Human-readable unique identifier like "TRN001"
   bio               String?
   location          String?
   experience        Int
@@ -119,11 +120,13 @@ model TrainerProfile {
   @@index([rating])
   @@index([reputationScore])
   @@index([completedRequests])
+  @@index([uniqueId])
 }
 
 model InstitutionProfile {
   id        String    @id @default(uuid())
   userId    String    @unique
+  uniqueId  String?   @unique // Human-readable unique identifier like "INST001"
   name      String
   location  String
   rating    Float     @default(0)
@@ -139,6 +142,7 @@ model InstitutionProfile {
 
   @@index([location])
   @@index([rating])
+  @@index([uniqueId])
 }
 
 model StudentProfile {
@@ -393,6 +397,8 @@ model Message {
   @@index([conversationId])
   @@index([senderId])
   @@index([createdAt])
+  @@index([conversationId, createdAt])
+  @@index([conversationId, isRead])
 }
 
 model Notification {
@@ -407,6 +413,22 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+  @@index([createdAt])
+}
+
+model VerificationRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  status    RequestStatus @default(PENDING)
+  message   String?  // Optional message from user
+  adminNote String?  // Admin's note when approving/rejecting
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reviewedAt DateTime?
+  reviewedBy String?  // Admin user ID who reviewed
+
+  @@index([userId])
+  @@index([status])
   @@index([createdAt])
 }
 

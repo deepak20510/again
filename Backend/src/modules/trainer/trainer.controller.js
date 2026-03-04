@@ -107,7 +107,7 @@ export const updateMyProfile = async (req, res, next) => {
 
 export const searchTrainers = async (req, res, next) => {
   try {
-    const result = await searchTrainersService(req.validated.query);
+    const result = await searchTrainersService(req.validated?.query || req.query || {});
 
     return res.status(200).json({
       success: true,

@@ -16,90 +16,25 @@ export const advancedSearch = async (req, res, next) => {
             search // General search term for name, headline, bio
         } = req.query;
 
-        const where = {};
-        const userWhere = { isActive: true };
+        const currentUserRole = req.user.role;
 
-        // Role filter
-        if (role && ["TRAINER", "INSTITUTION"].includes(role)) {
-            userWhere.role = role;
-        }
-
-        // General search filter - searches across multiple fields
-        if (search && search.trim()) {
-            const searchTerm = search.trim();
-            userWhere.OR = [
-                { firstName: { contains: searchTerm, mode: "insensitive" } },
-                { lastName: { contains: searchTerm, mode: "insensitive" } },
-                { username: { contains: searchTerm, mode: "insensitive" } },
-                { headline: { contains: searchTerm, mode: "insensitive" } },
-                { bio: { contains: searchTerm, mode: "insensitive" } },
-                { location: { contains: searchTerm, mode: "insensitive" } }
-            ];
-        }
-
-        // Location filter (specific location filter, overrides search if both provided)
-        if (location && location.trim() && !search) {
-            userWhere.location = {
-                contains: location.trim(),
-                mode: "insensitive"
-            };
-        }
-
-        // Build profile-specific filters
-        let profileWhere = { isActive: true };
-
-        if (role === "TRAINER" || !role) {
-            // Skill filter - search in skills array
-            if (skill && skill.trim()) {
-                const skillTerm = skill.trim();
-                profileWhere.skills = {
-                    some: {
-                        contains: skillTerm,
-                        mode: "insensitive"
-                    }
-                };
+        // Role-based filtering with flexibility:
+        // - role="TRAINER" - search trainers
+        // - role="INSTITUTION" - search institutions  
+        // - role="ALL" or no role - search based on current user's role (opposite by default)
+        let targetRole = role;
+        
+        // If role is explicitly "ALL", don't filter by role
+        if (role === "ALL") {
+            targetRole = null; // Search both trainers and institutions
+        } else if (!targetRole) {
+            // Default behavior: show opposite role
+            if (currentUserRole === "TRAINER") {
+                targetRole = "INSTITUTION"; // Trainers see institutions by default
+            } else if (currentUserRole === "INSTITUTION") {
+                targetRole = "TRAINER"; // Institutions see trainers by default
             }
-            
-            // Rating filter
-            if (minRating) {
-                profileWhere.rating = { gte: parseFloat(minRating) };
-            }
-            
-            // Experience filter
-            if (minExperience !== undefined || maxExperience !== undefined) {
-                profileWhere.experience = {
-                    ...(minExperience && { gte: parseInt(minExperience) }),
-                    ...(maxExperience && { lte: parseInt(maxExperience) })
-                };
-            }
-            
-            // Verified filter
-            if (verified === "true") {
-                profileWhere.verified = true;
-            }
-
-            // Bio/location search in profile
-            if (search && search.trim()) {
-                const searchTerm = search.trim();
-                profileWhere.OR = [
-                    { bio: { contains: searchTerm, mode: "insensitive" } },
-                    { location: { contains: searchTerm, mode: "insensitive" } },
-                    { skills: { hasSome: [searchTerm] } }
-                ];
-            }
-        } else if (role === "INSTITUTION") {
-            if (minRating) {
-                profileWhere.rating = { gte: parseFloat(minRating) };
-            }
-            
-            // Institution name and location search
-            if (search && search.trim()) {
-                const searchTerm = search.trim();
-                profileWhere.OR = [
-                    { name: { contains: searchTerm, mode: "insensitive" } },
-                    { location: { contains: searchTerm, mode: "insensitive" } }
-                ];
-            }
+            // Students see both (no targetRole set)
         }
 
         // Sorting
@@ -113,99 +48,216 @@ export const advancedSearch = async (req, res, next) => {
 
         const orderBy = sortMap[sort] || sortMap.rating_desc;
 
-        // Query based on role
+        // Query based on target role
         let results = [];
         let total = 0;
 
-        if (!role || role === "TRAINER") {
-            // Combine profile and user filters
+        if (targetRole === "TRAINER" || (!targetRole && currentUserRole !== "TRAINER" && currentUserRole !== "INSTITUTION")) {
+            // Search trainers (or both if no targetRole for students)
+            // Build the where clause properly - profile filters AND user filters
             const combinedWhere = {
-                ...profileWhere,
-                user: userWhere
+                isActive: true,
+                user: {
+                    isActive: true,
+                    isBanned: false,
+                    id: { not: req.user.id }
+                }
             };
 
+            // Add role filter if specified
+            if (targetRole) {
+                combinedWhere.user.role = targetRole;
+            }
+
+            // Add profile-specific filters (rating, experience, skills, verified)
+            if (minRating) {
+                combinedWhere.rating = { gte: parseFloat(minRating) };
+            }
+            if (minExperience !== undefined || maxExperience !== undefined) {
+                combinedWhere.experience = {
+                    ...(minExperience && { gte: parseInt(minExperience) }),
+                    ...(maxExperience && { lte: parseInt(maxExperience) })
+                };
+            }
+            if (skill && skill.trim()) {
+                combinedWhere.skills = { has: skill.trim() };
+            }
+            if (verified === "true") {
+                combinedWhere.verified = true;
+            }
+
+            // Add search term - use OR at the top level to search across both user and profile
+            if (search && search.trim()) {
+                const searchTerm = search.trim();
+                const searchConditions = [];
+
+                // User fields
+                searchConditions.push(
+                    { user: { firstName: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { lastName: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { headline: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { bio: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { location: { contains: searchTerm, mode: "insensitive" } } }
+                );
+
+                // Profile fields
+                searchConditions.push(
+                    { uniqueId: { contains: searchTerm, mode: "insensitive" } },
+                    { bio: { contains: searchTerm, mode: "insensitive" } },
+                    { location: { contains: searchTerm, mode: "insensitive" } },
+                    { skills: { has: searchTerm } }
+                );
+
+                combinedWhere.OR = searchConditions;
+            }
+
+            // Add location filter if specified (and not already in search)
+            if (location && location.trim() && (!search || !search.trim())) {
+                combinedWhere.user.location = {
+                    contains: location.trim(),
+                    mode: "insensitive"
+                };
+            }
+
             const [trainers, trainerCount] = await Promise.all([
-                prisma.trainerProfile.findMany({
-                    where: combinedWhere,
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                firstName: true,
-                                lastName: true,
-                                username: true,
-                                email: true,
-                                profilePicture: true,
-                                bio: true,
-                                headline: true,
-                                location: true,
-                                role: true
+                    prisma.trainerProfile.findMany({
+                        where: combinedWhere,
+                        select: {
+                            id: true,
+                            uniqueId: true,
+                            bio: true,
+                            location: true,
+                            experience: true,
+                            skills: true,
+                            rating: true,
+                            verified: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    profilePicture: true,
+                                    bio: true,
+                                    headline: true,
+                                    location: true,
+                                    role: true,
+                                    isVerified: true
+                                }
                             }
-                        }
-                    },
-                    orderBy,
-                    skip: (parseInt(page) - 1) * parseInt(limit),
-                    take: parseInt(limit)
-                }),
+                        },
+                        orderBy,
+                        skip: (parseInt(page) - 1) * parseInt(limit),
+                        take: parseInt(limit)
+                    }),
                 prisma.trainerProfile.count({ where: combinedWhere })
             ]);
 
             results = trainers
-                .filter(t => t.user)
+                .filter(t => t.user && t.user.firstName) // Filter out users with missing data
                 .map(t => ({
                     ...t.user,
                     profile: {
                         id: t.id,
+                        uniqueId: t.uniqueId,
                         bio: t.bio,
                         location: t.location,
                         experience: t.experience,
                         skills: t.skills,
                         rating: t.rating,
-                        verified: t.verified,
-                        completionRate: t.completionRate,
-                        responseTime: t.responseTime
+                        verified: t.verified
                     }
                 }));
             total = trainerCount;
-        } else if (role === "INSTITUTION") {
-            // Combine profile and user filters
+        } else if (targetRole === "INSTITUTION") {
+            // Build the where clause for institutions
             const combinedWhere = {
-                ...profileWhere,
-                user: userWhere
+                isActive: true,
+                user: {
+                    isActive: true,
+                    isBanned: false,
+                    id: { not: req.user.id }
+                }
             };
 
+            // Add role filter
+            if (targetRole) {
+                combinedWhere.user.role = targetRole;
+            }
+
+            // Add rating filter
+            if (minRating) {
+                combinedWhere.rating = { gte: parseFloat(minRating) };
+            }
+
+            // Add search term - use OR at the top level
+            if (search && search.trim()) {
+                const searchTerm = search.trim();
+                const searchConditions = [];
+
+                // User fields
+                searchConditions.push(
+                    { user: { firstName: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { lastName: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { headline: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { bio: { contains: searchTerm, mode: "insensitive" } } },
+                    { user: { location: { contains: searchTerm, mode: "insensitive" } } }
+                );
+
+                // Profile fields
+                searchConditions.push(
+                    { uniqueId: { contains: searchTerm, mode: "insensitive" } },
+                    { name: { contains: searchTerm, mode: "insensitive" } },
+                    { location: { contains: searchTerm, mode: "insensitive" } }
+                );
+
+                combinedWhere.OR = searchConditions;
+            }
+
+            // Add location filter if specified (and not already in search)
+            if (location && location.trim() && (!search || !search.trim())) {
+                combinedWhere.user.location = {
+                    contains: location.trim(),
+                    mode: "insensitive"
+                };
+            }
+
             const [institutions, institutionCount] = await Promise.all([
-                prisma.institutionProfile.findMany({
-                    where: combinedWhere,
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                firstName: true,
-                                lastName: true,
-                                username: true,
-                                email: true,
-                                profilePicture: true,
-                                bio: true,
-                                headline: true,
-                                location: true,
-                                role: true
+                    prisma.institutionProfile.findMany({
+                        where: combinedWhere,
+                        select: {
+                            id: true,
+                            uniqueId: true,
+                            name: true,
+                            location: true,
+                            rating: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    profilePicture: true,
+                                    bio: true,
+                                    headline: true,
+                                    location: true,
+                                    role: true,
+                                    isVerified: true
+                                }
                             }
-                        }
-                    },
-                    orderBy: { rating: orderBy.rating || "desc" },
-                    skip: (parseInt(page) - 1) * parseInt(limit),
-                    take: parseInt(limit)
-                }),
+                        },
+                        orderBy: { rating: orderBy.rating || "desc" },
+                        skip: (parseInt(page) - 1) * parseInt(limit),
+                        take: parseInt(limit)
+                    }),
                 prisma.institutionProfile.count({ where: combinedWhere })
             ]);
 
             results = institutions
-                .filter(i => i.user)
+                .filter(i => i.user && i.user.firstName) // Filter out users with missing data
                 .map(i => ({
                     ...i.user,
                     profile: {
                         id: i.id,
+                        uniqueId: i.uniqueId,
                         name: i.name,
                         location: i.location,
                         rating: i.rating

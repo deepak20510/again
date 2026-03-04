@@ -28,6 +28,7 @@ import notificationRoutes from "./modules/notifications/notification.routes.js";
 import discoveryRoutes from "./modules/discovery/discovery.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import analyticsRoutes from "./modules/analytics/analytics.routes.js";
+import verificationRoutes from "./modules/verification/verification.routes.js";
 
 import { errorHandler } from "./middleware/error.middleware.js";
 import { auditMiddleware } from "./middleware/audit.middleware.js";
@@ -120,6 +121,7 @@ app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/discovery", discoveryRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/verification", verificationRoutes);
 
 // Legacy routes (backward compatibility)
 app.use("/api/auth", authRoutes);

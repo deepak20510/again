@@ -45,6 +45,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const [urlCopied, setUrlCopied] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Create Post Modal State
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
@@ -61,16 +62,25 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const [loadingTrainers, setLoadingTrainers] = useState(false);
   const [loadingInstitutions, setLoadingInstitutions] = useState(false);
 
+  // Verification state
+  const [verificationStatus, setVerificationStatus] = useState(null);
+  const [loadingVerification, setLoadingVerification] = useState(false);
+
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // Determine if viewing own profile
-  const isOwnProfile = !username || username === authUser?.username;
+  // Check both username and ID to handle cases where username might be null
+  const isOwnProfile = !username || 
+                       username === authUser?.username || 
+                       username === authUser?.id;
 
   const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       const response = await ApiService.getUserProfile(username); // username can be undefined for own profile
       if (response.success) {
+        console.log('Profile Data:', response.data); // Debug log
+        console.log('Is Verified:', response.data.isVerified); // Debug log
         setProfileData(response.data);
         // Load analytics for this user
         loadAnalytics(response.data.id);
@@ -102,6 +112,26 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     fetchInstitutions();
   }, [loadProfile]);
 
+  // Separate effect for verification status - only load when profile data is ready
+  useEffect(() => {
+    // Only load verification status for own profile, if trainer/institution, and not already verified
+    if (isOwnProfile && profileData) {
+      const isTrainerOrInstitution = profileData.role === "TRAINER" || profileData.role === "INSTITUTION";
+      const isNotVerified = !profileData.isVerified;
+      
+      if (isTrainerOrInstitution && isNotVerified) {
+        loadVerificationStatus();
+      } else if (isTrainerOrInstitution && profileData.isVerified) {
+        // Already verified, no need to call API
+        setVerificationStatus({
+          hasRequest: false,
+          status: "ACCEPTED",
+          isVerified: true
+        });
+      }
+    }
+  }, [isOwnProfile, profileData?.role, profileData?.isVerified]);
+
   const fetchTrainers = async () => {
     try {
       setLoadingTrainers(true);
@@ -127,6 +157,65 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       console.error("Failed to fetch institutions:", error);
     } finally {
       setLoadingInstitutions(false);
+    }
+  };
+
+  const loadVerificationStatus = async () => {
+    try {
+      // Add a timeout to fail faster
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 5000)
+      );
+      
+      const apiPromise = ApiService.getVerificationStatus();
+      
+      const response = await Promise.race([apiPromise, timeoutPromise]);
+      
+      if (response.success) {
+        setVerificationStatus(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load verification status:", error);
+      // Set a default state so the button still works
+      setVerificationStatus({
+        hasRequest: false,
+        status: null,
+        isVerified: false
+      });
+    }
+  };
+
+  const handleRequestVerification = async () => {
+    try {
+      setLoadingVerification(true);
+      const response = await ApiService.requestVerification();
+      if (response.success) {
+        alert("Verification request submitted successfully! Please wait for admin approval.");
+        loadVerificationStatus();
+      }
+    } catch (error) {
+      alert(error.message || "Failed to submit verification request");
+    } finally {
+      setLoadingVerification(false);
+    }
+  };
+
+  const handleCancelVerificationRequest = async () => {
+    if (!confirm("Are you sure you want to cancel your verification request?")) {
+      return;
+    }
+    
+    try {
+      setLoadingVerification(true);
+      const response = await ApiService.cancelVerificationRequest();
+      if (response.success) {
+        alert("Verification request cancelled");
+        loadVerificationStatus();
+      }
+    } catch (error) {
+      alert(error.message || "Failed to cancel verification request");
+    } finally {
+      setLoadingVerification(false);
     }
   };
 
@@ -374,7 +463,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           "Expert Trainer",
         students: profileData.trainerProfile?.completedRequests || 0,
         courses: 0, // Mock for now
-        rating: profileData.trainerProfile?.rating || 0,
+        rating: analytics?.content?.averageRating || 0, // Use analytics average rating
+        uniqueId: profileData.trainerProfile?.uniqueId || null,
       };
     }
 
@@ -389,7 +479,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         employees: "10-50", // Mock
         trainers: 0,
         students: 0,
-        rating: profileData.institutionProfile?.rating || 0,
+        rating: analytics?.content?.averageRating || 0, // Use analytics average rating
+        uniqueId: profileData.institutionProfile?.uniqueId || null,
         programs: [
           {
             name: "Full Stack Development",
@@ -547,11 +638,59 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               Tutroid
             </span>
           </div>
-          <button
-            className={`p-2 rounded-lg ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
-          >
-            <MoreHorizontal size={20} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className={`p-2 rounded-lg ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            
+            {/* Dropdown Menu */}
+            {showMoreMenu && (
+              <>
+                {/* Backdrop to close menu */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowMoreMenu(false)}
+                />
+                
+                {/* Menu */}
+                <div className={`absolute right-0 mt-2 w-56 ${theme.cardBg} rounded-lg shadow-xl border ${theme.cardBorder} py-2 z-50`}>
+                  <button
+                    onClick={async () => {
+                      await handleCopyProfileURL();
+                      setShowMoreMenu(false);
+                    }}
+                    className={`w-full px-4 py-2.5 text-left flex items-center gap-3 ${theme.textPrimary} ${theme.hoverBg} transition-colors`}
+                  >
+                    <Share2 size={18} />
+                    <span className="text-sm font-medium">
+                      {urlCopied ? "✓ Profile URL Copied!" : "Share Profile"}
+                    </span>
+                  </button>
+                  
+                  {!isOwnProfile && (
+                    <>
+                      <div className={`h-px ${theme.cardBorder} my-1`} />
+                      <button
+                        onClick={() => {
+                          alert("Report feature coming soon");
+                          setShowMoreMenu(false);
+                        }}
+                        className={`w-full px-4 py-2.5 text-left flex items-center gap-3 text-red-500 ${theme.hoverBg} transition-colors`}
+                      >
+                        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-sm font-medium">Report Profile</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -568,14 +707,14 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       )}
 
       {/* Main Content */}
-      <div className="max-w-5xl mx-auto mt-6 px-6">
+      <div className="max-w-5xl mx-auto mt-4 md:mt-6 px-4 sm:px-6">
         {/* Profile Card */}
         <div
           className={`${theme.cardBg} rounded-xl shadow-lg overflow-hidden border ${theme.cardBorder} transition-all duration-300`}
         >
           {/* Cover Image */}
           <div
-            className={`h-48 relative overflow-hidden bg-linear-to-r from-slate-400 to-slate-500`}
+            className={`h-32 sm:h-40 md:h-48 relative overflow-hidden bg-linear-to-r from-slate-400 to-slate-500`}
           >
             {data.coverImage && (
               <img
@@ -595,14 +734,14 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           </div>
 
           {/* Profile Info */}
-          <div className="px-6 pb-6 relative">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6">
             {/* Avatar */}
-            <div className="absolute -top-16 left-6">
-              <div className="relative">
+            <div className="relative -mt-12 sm:-mt-16 mb-4">
+              <div className="relative inline-block">
                 <img
                   src={data.avatar || profile.avatar}
                   alt={data.name}
-                  className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-lg object-cover"
+                  className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-lg object-cover"
                 />
                 {isOwnProfile && (
                   <button
@@ -616,15 +755,50 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex flex-col gap-3 mb-4">
               {isOwnProfile ? (
                 <>
+                  {/* Verification Button - Only for Trainers and Institutions */}
+                  {(isTrainer || isInstitute) && !profileData?.isVerified && (
+                    <>
+                      {!verificationStatus?.hasRequest ? (
+                        <button
+                          onClick={handleRequestVerification}
+                          disabled={loadingVerification}
+                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold border-2 border-blue-500 text-blue-500 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <CheckCircle2 size={20} className="flex-shrink-0" />
+                          <span>{loadingVerification ? "Requesting..." : "Request Verification"}</span>
+                        </button>
+                      ) : verificationStatus.status === "PENDING" ? (
+                        <button
+                          onClick={handleCancelVerificationRequest}
+                          disabled={loadingVerification}
+                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-2 border-yellow-500/30 hover:bg-yellow-500/20 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <CheckCircle2 size={20} className="animate-pulse flex-shrink-0" />
+                          <span>{loadingVerification ? "Cancelling..." : "Verification Pending"}</span>
+                        </button>
+                      ) : verificationStatus.status === "REJECTED" ? (
+                        <button
+                          onClick={handleRequestVerification}
+                          disabled={loadingVerification}
+                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold border-2 border-red-500 text-red-500 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={verificationStatus.adminNote || "Previous request was rejected"}
+                        >
+                          <X size={20} className="flex-shrink-0" />
+                          <span>{loadingVerification ? "Requesting..." : "Request Again"}</span>
+                        </button>
+                      ) : null}
+                    </>
+                  )}
+                  
                   <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className={`flex items-center gap-2 px-6 py-2 rounded-full font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 shadow-md`}
+                    className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg`}
                   >
-                    <Pencil size={18} />
-                    Edit Profile
+                    <Pencil size={20} className="flex-shrink-0" />
+                    <span>Edit Profile</span>
                   </button>
                 </>
               ) : (
@@ -634,24 +808,24 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                     <button
                       onClick={handleHireInterest}
                       disabled={hireInterestSent}
-                      className={`px-4 py-2 rounded-full font-medium ${
+                      className={`w-full px-6 py-3.5 rounded-full text-base font-semibold ${
                         hireInterestSent 
                           ? "bg-emerald-500 text-white cursor-not-allowed" 
                           : `${theme.accentBg} text-white hover:opacity-90`
-                      } transition-all duration-300`}
+                      } transition-all duration-300 shadow-md hover:shadow-lg`}
                     >
                       {hireInterestSent ? "Interest Sent ✓" : "Hire"}
                     </button>
                   ) : (
                     <button
-                      className={`px-4 py-2 rounded-full font-medium ${theme.accentBg} text-white hover:opacity-90 transition-all duration-300`}
+                      className={`w-full px-6 py-3.5 rounded-full text-base font-semibold ${theme.accentBg} text-white hover:opacity-90 transition-all duration-300 shadow-md hover:shadow-lg`}
                     >
                       {isInstitute ? "Follow" : "Connect"}
                     </button>
                   )}
                   <button
                     onClick={() => setIsMessageModalOpen(true)}
-                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
+                    className={`w-full px-6 py-3.5 rounded-full text-base font-semibold border-2 ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300 shadow-sm hover:shadow-md`}
                   >
                     Message
                   </button>
@@ -662,77 +836,106 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             {/* Info */}
             <div className="mt-4">
               <div className="flex items-center gap-2">
-                <h1 className={`text-2xl font-bold ${theme.textPrimary}`}>
+                <h1 className={`text-xl sm:text-2xl md:text-3xl font-bold ${theme.textPrimary}`}>
                   {data.name}
                 </h1>
-                <CheckCircle2 className={`${theme.accentColor} w-6 h-6`} />
+                {/* Show verified badge only if user is verified */}
+                {profileData?.isVerified && (
+                  <CheckCircle2 className="text-blue-500 w-5 h-5 sm:w-6 sm:h-6" title="Verified" />
+                )}
                 {isStudent && (
-                  <span className={`${theme.textMuted} text-sm`}>(He/Him)</span>
+                  <span className={`${theme.textMuted} text-xs sm:text-sm`}>(He/Him)</span>
                 )}
               </div>
-              <p className={`${theme.textSecondary} mt-1 leading-relaxed`}>
+              
+              {/* Unique ID Badge - Show for Trainers and Institutions */}
+              {(isTrainer || isInstitute) && data.uniqueId && (
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold border ${
+                    isTrainer 
+                      ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30' 
+                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                  }`}>
+                    <span className="text-[10px]">ID:</span>
+                    {data.uniqueId}
+                  </span>
+                  
+                  {/* Verified Badge */}
+                  {profileData?.isVerified && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Verified
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              <p className={`${theme.textSecondary} mt-1 text-sm sm:text-base leading-relaxed`}>
                 {data.headline}
               </p>
 
+              {/* Stats - Location first, then Rating */}
               <div
-                className={`flex items-center gap-4 mt-3 text-sm ${theme.textMuted}`}
+                className={`flex flex-wrap items-center gap-2 sm:gap-3 mt-3 text-xs sm:text-sm font-medium`}
               >
-                <span className="flex items-center gap-1">
+                {/* Location - Always first and in blue */}
+                <span className={`flex items-center gap-1 ${theme.accentColor}`}>
                   <MapPin size={14} />
                   {data.location}
                 </span>
+                
+                {/* Rating - Next to location for trainers and institutions */}
+                {isTrainer && (
+                  <>
+                    <span className={theme.textMuted}>•</span>
+                    <span className={`flex items-center gap-1 ${theme.accentColor}`}>
+                      <Star size={14} className="fill-current" />
+                      {data.rating > 0 ? data.rating.toFixed(1) : '0.0'} average rating
+                    </span>
+                  </>
+                )}
+                
                 {isInstitute && (
                   <>
-                    <span>•</span>
-                    <span>{data.founded} Founded</span>
-                    <span>•</span>
-                    <span>{data.employees} employees</span>
+                    <span className={theme.textMuted}>•</span>
+                    <span className={`flex items-center gap-1 ${theme.accentColor}`}>
+                      <Star size={14} className="fill-current" />
+                      {data.rating > 0 ? data.rating.toFixed(1) : '0.0'} average rating
+                    </span>
+                    <span className={theme.textMuted}>•</span>
+                    <span className={theme.textMuted}>{data.founded} Founded</span>
+                    <span className={theme.textMuted}>•</span>
+                    <span className={theme.textMuted}>{data.employees} employees</span>
+                  </>
+                )}
+                
+                {/* Additional stats for students */}
+                {isStudent && (
+                  <>
+                    <span className={theme.textMuted}>•</span>
+                    <span className={theme.accentColor}>{data.connections} connections</span>
                   </>
                 )}
               </div>
 
-              {/* Stats */}
-              <div
-                className={`flex items-center gap-4 mt-3 text-sm ${theme.accentColor} font-medium`}
-              >
-                {isStudent && (
-                  <>
-                    <span>{data.connections} connections</span>
-                  </>
-                )}
-                {isTrainer && (
-                  <>
-                    <span>{data.students} students trained</span>
-                    <span>•</span>
-                    <span>{data.courses} courses</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Star size={14} className="fill-current" />
-                      {data.rating} rating
-                    </span>
-                  </>
-                )}
-                {isInstitute && (
-                  <>
-                    <span>{data.trainers} trainers</span>
-                    <span>•</span>
-                    <span>{data.students} students</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Star size={14} className="fill-current" />
-                      {data.rating} rating
-                    </span>
-                  </>
-                )}
-              </div>
+              {/* Additional Institution Stats */}
+              {isInstitute && (
+                <div
+                  className={`flex flex-wrap items-center gap-2 sm:gap-3 mt-2 text-xs sm:text-sm ${theme.textMuted}`}
+                >
+                  <span>{data.trainers} trainers</span>
+                  <span>•</span>
+                  <span>{data.students} students</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-3 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mt-6">
           {/* Left Column - Main Content */}
-          <div className="col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Analytics */}
             <div
               className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
@@ -1135,7 +1338,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           </div>
 
           {/* Right Sidebar */}
-          <div className="col-span-1 space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Quick Actions - Only for Trainer (own profile) */}
             {isTrainer && isOwnProfile && (
               <div

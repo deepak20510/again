@@ -1,10 +1,15 @@
 import client from "../../db.js";
+import { generateTrainerUniqueId } from "../../utils/uniqueIdGenerator.js";
 
 export const createTrainerProfileService = async (userId, data) => {
   try {
+    // Generate unique ID
+    const uniqueId = await generateTrainerUniqueId();
+
     const profile = await client.trainerProfile.create({
       data: {
         userId,
+        uniqueId,
         bio: data.bio ?? null,
         location: data.location ?? null,
         experience: data.experience,
@@ -12,6 +17,7 @@ export const createTrainerProfileService = async (userId, data) => {
       },
       select: {
         id: true,
+        uniqueId: true,
         bio: true,
         location: true,
         experience: true,
@@ -37,6 +43,7 @@ export const getMyTrainerProfileService = async (userId) => {
     where: { userId },
     select: {
       id: true,
+      uniqueId: true,
       bio: true,
       location: true,
       experience: true,

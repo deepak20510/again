@@ -82,7 +82,20 @@ const NotificationBell = () => {
       markAsRead(notification.id);
     }
     if (notification.link) {
-      navigate(notification.link);
+      // For message notifications, trigger custom event to open messaging panel
+      if (notification.type === "MESSAGE") {
+        // Handle new format: /messages?userId=xxx
+        if (notification.link.startsWith("/messages?userId=")) {
+          const userId = notification.link.split("userId=")[1];
+          window.dispatchEvent(new CustomEvent("openMessaging", { detail: { userId } }));
+        } 
+        // Handle old format: /messages/conversationId - just open messaging panel
+        else if (notification.link.startsWith("/messages/")) {
+          window.dispatchEvent(new CustomEvent("openMessaging", { detail: {} }));
+        }
+      } else {
+        navigate(notification.link);
+      }
       setShowDropdown(false);
     }
   };

@@ -107,6 +107,7 @@ export const getOrCreateConversation = async (req, res, next) => {
 export const getConversations = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const { limit = 50 } = req.query; // Add limit for performance
 
     const conversations = await prisma.conversation.findMany({
       where: {
@@ -129,10 +130,11 @@ export const getConversations = async (req, res, next) => {
         messages: {
           take: 1,
           orderBy: { createdAt: "desc" },
-          include: {
-            sender: {
-              select: { id: true, firstName: true, lastName: true },
-            },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            senderId: true,
           },
         },
         _count: {
@@ -147,6 +149,7 @@ export const getConversations = async (req, res, next) => {
         },
       },
       orderBy: { updatedAt: "desc" },
+      take: parseInt(limit),
     });
 
     res.json({ success: true, data: conversations });
@@ -226,7 +229,7 @@ export const sendMessage = async (req, res, next) => {
           type: "MESSAGE",
           title: "New Message",
           message: `${req.user.firstName || "Someone"} sent you a message`,
-          link: `/messages/${conversationId}`,
+          link: `/messages?userId=${senderId}`,
         },
       });
       emitNotification(participant.id, notification);
@@ -242,6 +245,7 @@ export const getMessages = async (req, res, next) => {
   try {
     const { conversationId } = req.params;
     const userId = req.user.id;
+    const { limit = 50, before } = req.query; // Add pagination support
 
     // Verify user is participant
     const conv = await prisma.conversation.findFirst({
@@ -255,8 +259,14 @@ export const getMessages = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "Forbidden" });
     }
 
+    // Build query with optional cursor-based pagination
+    const whereClause = { conversationId };
+    if (before) {
+      whereClause.createdAt = { lt: new Date(before) };
+    }
+
     const messages = await prisma.message.findMany({
-      where: { conversationId },
+      where: whereClause,
       include: {
         sender: {
           select: {
@@ -267,10 +277,14 @@ export const getMessages = async (req, res, next) => {
           },
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
+      take: parseInt(limit),
     });
 
-    res.json({ success: true, data: messages });
+    // Reverse to get chronological order
+    const chronologicalMessages = messages.reverse();
+
+    res.json({ success: true, data: chronologicalMessages });
   } catch (error) {
     next(error);
   }
@@ -313,11 +327,13 @@ export const getAvailableUsers = async (req, res, next) => {
     }
 
     // Get all users with allowed roles, excluding self
+    // Limit to 100 users for performance
     const users = await prisma.user.findMany({
       where: {
         role: { in: allowedRoles },
         id: { not: userId },
         isActive: true,
+        isBanned: false,
       },
       select: {
         id: true,
@@ -325,12 +341,9 @@ export const getAvailableUsers = async (req, res, next) => {
         lastName: true,
         role: true,
         profilePicture: true,
-        headline: true,
         trainerProfile: {
           select: {
-            bio: true,
             location: true,
-            skills: true,
           },
         },
         institutionProfile: {
@@ -341,6 +354,7 @@ export const getAvailableUsers = async (req, res, next) => {
         },
       },
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      take: 100, // Limit results for performance
     });
 
     res.json({ success: true, data: users });

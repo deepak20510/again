@@ -19,6 +19,7 @@ import {
   Link2,
   Video,
   Loader2,
+  Search,
 } from "lucide-react";
 import PostCard from "./PostCard";
 
@@ -33,6 +34,7 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortType, setSortType] = useState("recent");
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const observerTarget = useRef(null);
@@ -104,8 +106,6 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
       const response = await ApiService.getPosts?.({
         page: pageNum,
         limit: POSTS_PER_PAGE,
-        sortBy: sortType === "top" ? "averageRating" : "createdAt",
-        sortOrder: "desc"
       });
 
       if (response?.success) {
@@ -379,10 +379,20 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
 
   const sortedPosts = [...posts].sort((a, b) => {
     if (sortType === "top") {
-      // Sort by rating (highest first), then by total reviews as tiebreaker
-      const ratingDiff = (b.averageRating || 0) - (a.averageRating || 0);
-      if (ratingDiff !== 0) return ratingDiff;
-      return (b.totalReviews || 0) - (a.totalReviews || 0);
+      // Sort by popularity: calculate engagement score
+      // Engagement = likes + (comments * 2) + (shares * 3) + (reviews * 1.5)
+      const getEngagementScore = (post) => {
+        const likes = post.likes || 0;
+        const comments = post.commentCount || 0;
+        const shares = post.shares || 0;
+        const reviews = post.totalReviews || 0;
+        const rating = post.averageRating || 0;
+        
+        // Weight: likes(1) + comments(2) + shares(3) + reviews(1.5) + rating bonus
+        return likes + (comments * 2) + (shares * 3) + (reviews * 1.5) + (rating * 10);
+      };
+      
+      return getEngagementScore(b) - getEngagementScore(a);
     } else {
       // Sort by creation date (newest first)
       return new Date(b.createdAt) - new Date(a.createdAt);

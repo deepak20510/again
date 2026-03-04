@@ -9,6 +9,8 @@ import {
   takeReportAction,
   getAnalytics,
   transferAdmin,
+  getVerificationRequests,
+  reviewVerificationRequest,
 } from "./admin.controller.js";
 import {
   adminForgotPassword,
@@ -118,5 +120,19 @@ router.get("/analytics", getAnalytics);
  * @access  Admin only
  */
 router.post("/transfer-admin", validate(transferAdminSchema), transferAdmin);
+
+/**
+ * @route   GET /api/v1/admin/verification-requests
+ * @desc    Get all verification requests with filtering and pagination
+ * @access  Admin only
+ */
+router.get("/verification-requests", getVerificationRequests);
+
+/**
+ * @route   PATCH /api/v1/admin/verification-requests/:id/review
+ * @desc    Approve or reject a verification request
+ * @access  Admin only
+ */
+router.patch("/verification-requests/:id/review", reviewVerificationRequest);
 
 export default router;

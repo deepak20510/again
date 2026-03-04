@@ -130,40 +130,40 @@ const AdminUsers = () => {
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case "ADMIN":
-        return "bg-purple-100 text-purple-800";
+        return "bg-purple-500/10 text-purple-500";
       case "TRAINER":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-500/10 text-blue-500";
       case "INSTITUTION":
-        return "bg-green-100 text-green-800";
+        return "bg-green-500/10 text-green-500";
       case "STUDENT":
-        return "bg-gray-100 text-gray-800";
+        return `${theme.cardBg} ${theme.textMuted}`;
       default:
-        return "bg-gray-100 text-gray-800";
+        return `${theme.cardBg} ${theme.textMuted}`;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className={`text-2xl font-bold ${theme.textPrimary}`}>User Management</h1>
-          <p className="mt-1 text-2xl font-black text-black">
+          <h1 className={`text-2xl sm:text-3xl font-bold ${theme.textPrimary}`}>User Management</h1>
+          <p className={`mt-1 text-sm sm:text-base ${theme.textSecondary}`}>
             Manage and moderate user accounts
           </p>
         </div>
         <button
           onClick={fetchUsers}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} transition-colors`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textSecondary} ${theme.hoverBg} transition-colors self-start sm:self-auto`}
         >
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          <span className="text-sm">Refresh</span>
         </button>
       </div>
 
       {/* Filters */}
-      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} p-4 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-800 dark:to-gray-900`}>
-        <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
+      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} p-4 sm:p-6 shadow-sm`}>
+        <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-3 sm:gap-4">
           <div className="flex-1 relative">
             <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme.textMuted}`} />
             <input
@@ -171,7 +171,7 @@ const AdminUsers = () => {
               placeholder="Search by name or email..."
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full pl-10 pr-4 py-2 text-sm sm:text-base rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -180,7 +180,7 @@ const AdminUsers = () => {
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, role: e.target.value }))
               }
-              className={`px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
               <option value="">All Roles</option>
               <option value="STUDENT">Student</option>
@@ -193,7 +193,7 @@ const AdminUsers = () => {
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, isVerified: e.target.value }))
               }
-              className={`px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
               <option value="">All Verification</option>
               <option value="true">Verified</option>
@@ -204,7 +204,7 @@ const AdminUsers = () => {
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, isBanned: e.target.value }))
               }
-              className={`px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
               <option value="">All Status</option>
               <option value="true">Banned</option>
@@ -212,7 +212,7 @@ const AdminUsers = () => {
             </select>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
+              className="px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               Search
             </button>
@@ -220,7 +220,7 @@ const AdminUsers = () => {
               <button
                 type="button"
                 onClick={clearFilters}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} hover:scale-105 active:scale-95 transition-all duration-200`}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textSecondary} ${theme.hoverBg} transition-colors`}
               >
                 <X className="w-4 h-4" />
                 Clear
@@ -231,10 +231,10 @@ const AdminUsers = () => {
         
         {/* Active Filters Display */}
         {(filters.role || filters.isVerified || filters.isBanned) && (
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <span className={`text-sm ${theme.textMuted}`}>Active filters:</span>
+          <div className={`flex flex-wrap gap-2 mt-4 pt-4 border-t ${theme.cardBorder}`}>
+            <span className={`text-xs sm:text-sm ${theme.textMuted}`}>Active filters:</span>
             {filters.role && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500">
                 Role: {filters.role}
                 <button onClick={() => setFilters((prev) => ({ ...prev, role: "" }))}>
                   <X className="w-3 h-3" />
@@ -242,7 +242,7 @@ const AdminUsers = () => {
               </span>
             )}
             {filters.isVerified && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
                 {filters.isVerified === "true" ? "Verified" : "Unverified"}
                 <button onClick={() => setFilters((prev) => ({ ...prev, isVerified: "" }))}>
                   <X className="w-3 h-3" />
@@ -250,7 +250,7 @@ const AdminUsers = () => {
               </span>
             )}
             {filters.isBanned && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
                 {filters.isBanned === "true" ? "Banned" : "Active"}
                 <button onClick={() => setFilters((prev) => ({ ...prev, isBanned: "" }))}>
                   <X className="w-3 h-3" />
@@ -262,145 +262,147 @@ const AdminUsers = () => {
       </div>
 
       {/* Users Table */}
-      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-800 dark:to-gray-900`}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className={`border-b ${theme.cardBorder} ${theme.bgSecondary}`}>
-                <th className={`text-left py-4 px-6 ${theme.textMuted} font-medium`}>User</th>
-                <th className={`text-left py-4 px-6 ${theme.textMuted} font-medium`}>Role</th>
-                <th className={`text-left py-4 px-6 ${theme.textMuted} font-medium`}>Status</th>
-                <th className={`text-left py-4 px-6 ${theme.textMuted} font-medium`}>Joined</th>
-                <th className={`text-right py-4 px-6 ${theme.textMuted} font-medium`}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <p className={`mt-4 ${theme.textMuted}`}>Loading users...</p>
-                  </td>
+      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} overflow-hidden shadow-sm`}>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="inline-block min-w-full align-middle">
+            <table className="min-w-full">
+              <thead>
+                <tr className={`border-b ${theme.cardBorder}`}>
+                  <th className={`text-left py-3 sm:py-4 px-4 sm:px-6 ${theme.textMuted} font-medium text-xs sm:text-sm`}>User</th>
+                  <th className={`text-left py-3 sm:py-4 px-4 sm:px-6 ${theme.textMuted} font-medium text-xs sm:text-sm`}>Role</th>
+                  <th className={`text-left py-3 sm:py-4 px-4 sm:px-6 ${theme.textMuted} font-medium text-xs sm:text-sm`}>Status</th>
+                  <th className={`text-left py-3 sm:py-4 px-4 sm:px-6 ${theme.textMuted} font-medium text-xs sm:text-sm`}>Joined</th>
+                  <th className={`text-right py-3 sm:py-4 px-4 sm:px-6 ${theme.textMuted} font-medium text-xs sm:text-sm`}>Actions</th>
                 </tr>
-              ) : users.length > 0 ? (
-                users.map((user) => (
-                  <tr key={user.id} className={`border-b ${theme.cardBorder} last:border-0 hover:${theme.hoverBg}`}>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
-                          {user.firstName?.[0] || user.email?.[0] || "U"}
-                        </div>
-                        <div>
-                          <p className={`font-medium ${theme.textPrimary}`}>
-                            {user.firstName || user.lastName
-                              ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
-                              : user.email}
-                          </p>
-                          <p className={`text-sm ${theme.textMuted}`}>{user.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex flex-wrap gap-2">
-                        {/* Show Verified/Unverified only for TRAINER and INSTITUTION */}
-                        {(user.role === "TRAINER" || user.role === "INSTITUTION") && (
-                          <>
-                            {user.isVerified ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                <CheckCircle className="w-3 h-3" />
-                                Verified
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                <XCircle className="w-3 h-3" />
-                                Unverified
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {/* Show Active/Banned for all users */}
-                        {user.isBanned ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            <Ban className="w-3 h-3" />
-                            Banned
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            <Shield className="w-3 h-3" />
-                            Active
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className={`py-4 px-6 ${theme.textSecondary}`}>
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Verify/Unverify and Ban buttons only for TRAINER and INSTITUTION */}
-                        {(user.role === "TRAINER" || user.role === "INSTITUTION") && (
-                          <>
-                            <button
-                              onClick={() => handleVerifyUser(user.id, user.isVerified)}
-                              disabled={actionLoading[user.id]}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
-                                user.isVerified
-                                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                  : "bg-green-600 text-white hover:bg-green-700 hover:shadow-lg"
-                              } disabled:opacity-50 disabled:hover:scale-100`}
-                            >
-                              {actionLoading[user.id]
-                                ? "..."
-                                : user.isVerified
-                                ? "Unverify"
-                                : "Verify"}
-                            </button>
-                            <button
-                              onClick={() => handleBanUser(user.id, user.isBanned)}
-                              disabled={actionLoading[`ban-${user.id}`]}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
-                                user.isBanned
-                                  ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg"
-                                  : "bg-red-600 text-white hover:bg-red-700 hover:shadow-lg"
-                              } disabled:opacity-50 disabled:hover:scale-100`}
-                            >
-                              {actionLoading[`ban-${user.id}`]
-                                ? "..."
-                                : user.isBanned
-                                ? "Unban"
-                                : "Ban"}
-                            </button>
-                          </>
-                        )}
-                        {/* Students only show Active status - no action buttons */}
-                        {user.role === "STUDENT" && (
-                          <span className={`text-sm ${theme.textMuted}`}>-</span>
-                        )}
-                      </div>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                      <p className={`mt-4 ${theme.textMuted} text-sm`}>Loading users...</p>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center">
-                    <Users className={`w-12 h-12 ${theme.textMuted} mx-auto mb-4`} />
-                    <p className={`${theme.textMuted}`}>No users found</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ) : users.length > 0 ? (
+                  users.map((user) => (
+                    <tr key={user.id} className={`border-b ${theme.cardBorder} last:border-0 ${theme.hoverBg} transition-colors`}>
+                      <td className="py-3 sm:py-4 px-4 sm:px-6">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 font-medium text-xs sm:text-sm flex-shrink-0">
+                            {user.firstName?.[0] || user.email?.[0] || "U"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`font-medium ${theme.textPrimary} text-xs sm:text-sm truncate`}>
+                              {user.firstName || user.lastName
+                                ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                                : user.email}
+                            </p>
+                            <p className={`text-xs ${theme.textMuted} truncate`}>{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 sm:py-4 px-4 sm:px-6">
+                        <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="py-3 sm:py-4 px-4 sm:px-6">
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                          {/* Show Verified/Unverified only for TRAINER and INSTITUTION */}
+                          {(user.role === "TRAINER" || user.role === "INSTITUTION") && (
+                            <>
+                              {user.isVerified ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-green-500/10 text-green-500">
+                                  <CheckCircle className="w-3 h-3" />
+                                  <span className="hidden sm:inline">Verified</span>
+                                </span>
+                              ) : (
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium ${theme.cardBg} ${theme.textMuted} border ${theme.cardBorder}`}>
+                                  <XCircle className="w-3 h-3" />
+                                  <span className="hidden sm:inline">Unverified</span>
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {/* Show Active/Banned for all users */}
+                          {user.isBanned ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-red-500/10 text-red-500">
+                              <Ban className="w-3 h-3" />
+                              <span className="hidden sm:inline">Banned</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-blue-500/10 text-blue-500">
+                              <Shield className="w-3 h-3" />
+                              <span className="hidden sm:inline">Active</span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className={`py-3 sm:py-4 px-4 sm:px-6 ${theme.textSecondary} text-xs sm:text-sm`}>
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 sm:py-4 px-4 sm:px-6">
+                        <div className="flex items-center justify-end gap-1 sm:gap-2">
+                          {/* Verify/Unverify and Ban buttons only for TRAINER and INSTITUTION */}
+                          {(user.role === "TRAINER" || user.role === "INSTITUTION") && (
+                            <>
+                              <button
+                                onClick={() => handleVerifyUser(user.id, user.isVerified)}
+                                disabled={actionLoading[user.id]}
+                                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                                  user.isVerified
+                                    ? `${theme.cardBg} ${theme.textMuted} border ${theme.cardBorder} ${theme.hoverBg}`
+                                    : "bg-green-500 text-white hover:bg-green-600"
+                                } disabled:opacity-50`}
+                              >
+                                {actionLoading[user.id]
+                                  ? "..."
+                                  : user.isVerified
+                                  ? "Unverify"
+                                  : "Verify"}
+                              </button>
+                              <button
+                                onClick={() => handleBanUser(user.id, user.isBanned)}
+                                disabled={actionLoading[`ban-${user.id}`]}
+                                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                                  user.isBanned
+                                    ? "bg-blue-500 text-white hover:bg-blue-600"
+                                    : "bg-red-500 text-white hover:bg-red-600"
+                                } disabled:opacity-50`}
+                              >
+                                {actionLoading[`ban-${user.id}`]
+                                  ? "..."
+                                  : user.isBanned
+                                  ? "Unban"
+                                  : "Ban"}
+                              </button>
+                            </>
+                          )}
+                          {/* Students only show Active status - no action buttons */}
+                          {user.role === "STUDENT" && (
+                            <span className={`text-xs sm:text-sm ${theme.textMuted}`}>-</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center">
+                      <Users className={`w-12 h-12 ${theme.textMuted} mx-auto mb-4`} />
+                      <p className={`${theme.textMuted} text-sm`}>No users found</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className={`flex items-center justify-between px-6 py-4 border-t ${theme.cardBorder}`}>
-            <p className={`text-sm ${theme.textMuted}`}>
+          <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t ${theme.cardBorder}`}>
+            <p className={`text-xs sm:text-sm ${theme.textMuted}`}>
               Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
               {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
               {pagination.total} users
@@ -411,11 +413,11 @@ const AdminUsers = () => {
                   setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
                 }
                 disabled={pagination.page === 1}
-                className={`p-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                className={`p-2 rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textSecondary} ${theme.hoverBg} transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className={`px-4 py-2 ${theme.textSecondary}`}>
+              <span className={`px-3 sm:px-4 py-2 ${theme.textSecondary} text-xs sm:text-sm`}>
                 Page {pagination.page} of {pagination.pages}
               </span>
               <button
@@ -423,7 +425,7 @@ const AdminUsers = () => {
                   setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
                 }
                 disabled={pagination.page === pagination.pages}
-                className={`p-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                className={`p-2 rounded-lg border ${theme.cardBorder} ${theme.cardBg} ${theme.textSecondary} ${theme.hoverBg} transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

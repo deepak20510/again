@@ -53,46 +53,46 @@ export default function EcosystemSection() {
   ];
 
   return (
-    <section className="py-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="py-12 sm:py-16 md:py-20 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Heading */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
             One Platform, Three Ecosystems
           </h2>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+          <p className="text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto px-4">
             Whether you're teaching, hiring, or learning, Tutroid provides the
             tools you need to succeed.
           </p>
         </div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {cards.map((card) => (
             <div
               key={card.title}
-              className="bg-white rounded-2xl p-8 shadow-md 
+              className="bg-white rounded-2xl p-6 sm:p-8 shadow-md 
               transition-all duration-300 ease-out
               hover:-translate-y-2 hover:shadow-xl"
             >
               {/* Icon */}
               <div
-                className={`${card.iconBg} w-14 h-14 flex items-center justify-center text-white rounded-xl mb-6`}
+                className={`${card.iconBg} w-12 sm:w-14 h-12 sm:h-14 flex items-center justify-center text-white rounded-xl mb-4 sm:mb-6`}
               >
                 {card.icon}
               </div>
 
               {/* Title */}
-              <h3 className="text-2xl font-semibold mb-3">{card.title}</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-3">{card.title}</h3>
 
               {/* Description */}
-              <p className="text-gray-600 mb-6">{card.description}</p>
+              <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">{card.description}</p>
 
               {/* Bullet Points */}
-              <ul className="space-y-2 mb-8 text-gray-600">
+              <ul className="space-y-2 mb-6 sm:mb-8 text-gray-600 text-sm sm:text-base">
                 {card.points.map((point, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <span className="text-blue-600 mt-1">•</span>
+                    <span className="text-blue-600 mt-1 flex-shrink-0">•</span>
                     <span>{point}</span>
                   </li>
                 ))}
@@ -100,7 +100,7 @@ export default function EcosystemSection() {
 
               {/* Button */}
               <button
-                className={`w-full py-3 rounded-lg font-medium transition-all duration-300 ${card.buttonStyle}`}
+                className={`w-full py-2 sm:py-3 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${card.buttonStyle}`}
               >
                 {card.button}
               </button>
