@@ -11,11 +11,14 @@ import Dashboard from "../pages/StudentHome";
 import ProfilePage from "../pages/ProfilePage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AdminDashboard, { AdminOverview } from "../../pages/admin/AdminDashboard";
+import AdminDashboard, { AdminOverview, AdminSettings } from "../../pages/admin/AdminDashboard";
 import AdminUsers from "../../pages/admin/AdminUsers";
 import AdminReports from "../../pages/admin/AdminReports";
 import AdminAnalytics from "../../pages/admin/AdminAnalytics";
 import AdminLogin from "../../pages/admin/AdminLogin";
+import MyCourses from "../pages/trainer/MyCourses";
+import Students from "../pages/trainer/Students";
+import Reviews from "../pages/trainer/Reviews";
 import { USER_TYPES } from "../../config/dashboardConfig";
 
 // Admin route guard component - always shows login if not admin
@@ -121,6 +124,31 @@ export default function AppRoutes() {
           }
         />
 
+        {/* Trainer Specific Routes */}
+        <Route
+          path="/trainer/courses"
+          element={
+            <ProtectedRoute requiredRole="TRAINER">
+              <MyCourses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trainer/students"
+          element={
+            <ProtectedRoute requiredRole="TRAINER">
+              <Students />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trainer/reviews"
+          element={
+            <ProtectedRoute requiredRole="TRAINER">
+              <Reviews />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin Routes - Special login flow */}
         <Route path="/admin" element={<AdminRouteGuard />}>
@@ -129,6 +157,7 @@ export default function AppRoutes() {
             <Route path="users" element={<AdminUsers />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
         </Route>
       </Routes>

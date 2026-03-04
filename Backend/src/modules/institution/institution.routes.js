@@ -5,6 +5,7 @@ import { authMiddleware } from "../../middleware/auth.middleware.js";
 import {
   createInstitutionProfile,
   getMyInstitutionProfile,
+  searchInstitutions,
 } from "./institution.controller.js";
 
 import { createInstitutionProfileSchema } from "./institution.schema.js";
@@ -12,6 +13,9 @@ import { createInstitutionProfileSchema } from "./institution.schema.js";
 const router = express.Router();
 
 console.log("Institution routes loaded");
+
+// Public search endpoint
+router.get("/search", searchInstitutions);
 
 router.post(
   "/profile",

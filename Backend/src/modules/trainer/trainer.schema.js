@@ -31,15 +31,13 @@ export const createTrainerProfileSchema = z.object({
   }),
 });
 export const trainerSearchSchema = z.object({
-  query: z.object({
-    skill: z.string().trim().min(1).max(50).optional(),
-    location: z.string().trim().min(1).max(100).optional(),
-    minExp: z.coerce.number().int().min(0).max(50).optional(),
-    maxExp: z.coerce.number().int().min(0).max(50).optional(),
-    page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(50).default(10),
-    sort: z
-      .enum(["experience_asc", "experience_desc", "newest"])
-      .default("newest"),
-  }),
+  skill: z.string().trim().min(1).max(50).optional(),
+  location: z.string().trim().min(1).max(100).optional(),
+  minExp: z.coerce.number().int().min(0).max(50).optional(),
+  maxExp: z.coerce.number().int().min(0).max(50).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+  sort: z
+    .enum(["experience_asc", "experience_desc", "newest"])
+    .default("newest"),
 });

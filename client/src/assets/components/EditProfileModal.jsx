@@ -10,6 +10,8 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
   const [coverPreview, setCoverPreview] = useState(profileData.coverImage || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [profileFile, setProfileFile] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
   const profileInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
@@ -27,14 +29,24 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
       reader.onloadend = () => {
         if (type === "profile") {
           setProfilePreview(reader.result);
-          setFormData((prev) => ({ ...prev, avatar: reader.result }));
+          setProfileFile(file);
         } else {
           setCoverPreview(reader.result);
-          setFormData((prev) => ({ ...prev, coverImage: reader.result }));
+          setCoverFile(file);
         }
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const uploadFile = async (file) => {
+    if (!file) return null;
+    
+    const response = await ApiService.uploadFile(file, "Profile Photo");
+    if (response.success) {
+      return response.data.url;
+    }
+    throw new Error(response.message || "Failed to upload file");
   };
 
   const handleSave = async () => {
@@ -42,6 +54,17 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
     setError(null);
 
     try {
+      // Upload photos first if changed
+      let profilePictureUrl = formData.avatar;
+      let coverImageUrl = formData.coverImage;
+
+      if (profileFile) {
+        profilePictureUrl = await uploadFile(profileFile);
+      }
+      if (coverFile) {
+        coverImageUrl = await uploadFile(coverFile);
+      }
+
       // Split name for backend
       let firstName = formData.name;
       let lastName = "";
@@ -52,13 +75,19 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         lastName = parts.slice(1).join(" ");
       }
 
-      // Call API to save profile (using general endpoint)
-      const response = await ApiService.updateGeneralProfile({
+      // Call API to save profile (using trainer endpoint for trainers)
+      const updateData = {
         ...formData,
         firstName,
         lastName,
-        profilePicture: formData.avatar, // map for backend
-      });
+        profilePicture: profilePictureUrl,
+        coverImage: coverImageUrl,
+        avatar: profilePictureUrl,
+      };
+
+      const response = isTrainer 
+        ? await ApiService.updateTrainerProfile(updateData)
+        : await ApiService.updateGeneralProfile(updateData);
 
       if (response.success) {
         onSave(response.data);

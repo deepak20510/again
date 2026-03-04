@@ -53,3 +53,50 @@ export const getMyInstitutionProfileService = async (userId) => {
 
   return profile;
 };
+
+export const searchInstitutionsService = async (filters = {}) => {
+  const { location, page = 1, limit = 12 } = filters;
+  const skip = (page - 1) * limit;
+
+  const where = {
+    user: {
+      role: "INSTITUTION",
+      isActive: true,
+    },
+    ...(location && { location: { contains: location, mode: "insensitive" } }),
+  };
+
+  const institutions = await client.institutionProfile.findMany({
+    where,
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          profilePicture: true,
+          isVerified: true,
+        },
+      },
+      _count: {
+        select: {
+          requests: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    skip,
+    take: parseInt(limit),
+  });
+
+  const total = await client.institutionProfile.count({ where });
+
+  return {
+    institutions,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      pages: Math.ceil(total / parseInt(limit)),
+    },
+  };
+};

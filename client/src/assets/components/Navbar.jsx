@@ -228,7 +228,7 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
             <div className="relative" ref={notificationRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 group min-w-[56px] ${
+                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 group min-w-14 ${
                   showNotifications
                     ? `${theme.accentBg}/10 ${theme.accentColor}`
                     : `${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText}`
@@ -248,7 +248,7 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
               {/* Notification Dropdown */}
               {showNotifications && (
                 <div 
-                  className={`absolute right-0 mt-2 w-96 ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} z-50 max-h-[500px] overflow-hidden flex flex-col animate-slideDown`}
+                  className={`absolute right-0 mt-2 w-96 ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} z-50 max-h-125 overflow-hidden flex flex-col animate-slideDown`}
                   style={{
                     animation: 'slideDown 0.2s ease-out'
                   }}
@@ -296,7 +296,7 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
                               </p>
                             </div>
                             {!notification.isRead && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />
+                              <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1" />
                             )}
                           </div>
                         </button>

@@ -46,12 +46,12 @@ export const getMyProfile = async (req, res, next) => {
 export const updateMyProfile = async (req, res, next) => {
   try {
     const { userId } = req.user;
-    const { name, headline, location, bio, experience, skills, avatar, firstName, lastName } = req.body;
+    const { name, headline, location, bio, experience, skills, avatar, profilePicture, coverImage, firstName, lastName } = req.body;
 
-    // Update user table (name, avatar)
+    // Update user table (name, avatar, coverImage)
     const userUpdate = {};
-    if (firstName) userUpdate.firstName = firstName;
-    if (lastName) userUpdate.lastName = lastName;
+    if (firstName !== undefined) userUpdate.firstName = firstName;
+    if (lastName !== undefined) userUpdate.lastName = lastName;
     if (name) {
       // Parse name into firstName and lastName
       const nameParts = name.trim().split(" ");
@@ -63,7 +63,13 @@ export const updateMyProfile = async (req, res, next) => {
         userUpdate.lastName = "";
       }
     }
-    if (avatar) userUpdate.avatar = avatar;
+    // Handle both avatar and profilePicture (frontend might send either)
+    if (avatar !== undefined) userUpdate.avatar = avatar;
+    if (profilePicture !== undefined) userUpdate.profilePicture = profilePicture;
+    if (coverImage !== undefined) userUpdate.coverImage = coverImage;
+    if (headline !== undefined) userUpdate.headline = headline;
+    if (location !== undefined) userUpdate.location = location;
+    if (bio !== undefined) userUpdate.bio = bio;
 
     let updatedUser = null;
     if (Object.keys(userUpdate).length > 0) {
@@ -73,9 +79,9 @@ export const updateMyProfile = async (req, res, next) => {
     // Update trainer profile (bio, location, skills)
     // Note: experience is stored as Int (years), skills as String[]
     const profileUpdate = {};
-    if (headline) profileUpdate.bio = headline;
-    if (bio) profileUpdate.bio = bio;
-    if (location) profileUpdate.location = location;
+    if (headline !== undefined) profileUpdate.bio = headline;
+    if (bio !== undefined) profileUpdate.bio = bio;
+    if (location !== undefined) profileUpdate.location = location;
     if (Array.isArray(skills)) profileUpdate.skills = skills;
     // Only update experience if it's a number (years)
     if (typeof experience === "number") profileUpdate.experience = experience;

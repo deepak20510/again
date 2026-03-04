@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  X,
 } from "lucide-react";
 
 const AdminUsers = () => {
@@ -36,7 +37,17 @@ const AdminUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [pagination.page, filters.role, filters.isVerified, filters.isBanned]);
+  }, [pagination.page]);
+
+  // Separate effect for filter changes - resets page to 1 and fetches
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    // Small delay to ensure page is reset before fetching
+    const timer = setTimeout(() => {
+      fetchUsers();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [filters.role, filters.isVerified, filters.isBanned]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -66,6 +77,16 @@ const AdminUsers = () => {
     e.preventDefault();
     setPagination((prev) => ({ ...prev, page: 1 }));
     fetchUsers();
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      role: "",
+      search: "",
+      isVerified: "",
+      isBanned: "",
+    });
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleVerifyUser = async (userId, currentStatus) => {
@@ -127,7 +148,7 @@ const AdminUsers = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className={`text-2xl font-bold ${theme.textPrimary}`}>User Management</h1>
-          <p className={`${theme.textSecondary} mt-1`}>
+          <p className="mt-1 text-2xl font-black text-black">
             Manage and moderate user accounts
           </p>
         </div>
@@ -141,7 +162,7 @@ const AdminUsers = () => {
       </div>
 
       {/* Filters */}
-      <div className={`${theme.cardBg} rounded-lg border ${theme.cardBorder} p-4`}>
+      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} p-4 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-800 dark:to-gray-900`}>
         <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme.textMuted}`} />
@@ -157,7 +178,7 @@ const AdminUsers = () => {
             <select
               value={filters.role}
               onChange={(e) =>
-                setFilters((prev) => ({ ...prev, role: e.target.value, page: 1 }))
+                setFilters((prev) => ({ ...prev, role: e.target.value }))
               }
               className={`px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
@@ -170,7 +191,7 @@ const AdminUsers = () => {
             <select
               value={filters.isVerified}
               onChange={(e) =>
-                setFilters((prev) => ({ ...prev, isVerified: e.target.value, page: 1 }))
+                setFilters((prev) => ({ ...prev, isVerified: e.target.value }))
               }
               className={`px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
@@ -181,7 +202,7 @@ const AdminUsers = () => {
             <select
               value={filters.isBanned}
               onChange={(e) =>
-                setFilters((prev) => ({ ...prev, isBanned: e.target.value, page: 1 }))
+                setFilters((prev) => ({ ...prev, isBanned: e.target.value }))
               }
               className={`px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
             >
@@ -191,16 +212,57 @@ const AdminUsers = () => {
             </select>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
             >
               Search
             </button>
+            {(filters.role || filters.isVerified || filters.isBanned || filters.search) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} hover:scale-105 active:scale-95 transition-all duration-200`}
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </button>
+            )}
           </div>
         </form>
+        
+        {/* Active Filters Display */}
+        {(filters.role || filters.isVerified || filters.isBanned) && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <span className={`text-sm ${theme.textMuted}`}>Active filters:</span>
+            {filters.role && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Role: {filters.role}
+                <button onClick={() => setFilters((prev) => ({ ...prev, role: "" }))}>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.isVerified && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                {filters.isVerified === "true" ? "Verified" : "Unverified"}
+                <button onClick={() => setFilters((prev) => ({ ...prev, isVerified: "" }))}>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filters.isBanned && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                {filters.isBanned === "true" ? "Banned" : "Active"}
+                <button onClick={() => setFilters((prev) => ({ ...prev, isBanned: "" }))}>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Users Table */}
-      <div className={`${theme.cardBg} rounded-lg border ${theme.cardBorder} overflow-hidden`}>
+      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-800 dark:to-gray-900`}>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -245,17 +307,23 @@ const AdminUsers = () => {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex flex-wrap gap-2">
-                        {user.isVerified ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <CheckCircle className="w-3 h-3" />
-                            Verified
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            <XCircle className="w-3 h-3" />
-                            Unverified
-                          </span>
+                        {/* Show Verified/Unverified only for TRAINER and INSTITUTION */}
+                        {(user.role === "TRAINER" || user.role === "INSTITUTION") && (
+                          <>
+                            {user.isVerified ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <CheckCircle className="w-3 h-3" />
+                                Verified
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <XCircle className="w-3 h-3" />
+                                Unverified
+                              </span>
+                            )}
+                          </>
                         )}
+                        {/* Show Active/Banned for all users */}
                         {user.isBanned ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                             <Ban className="w-3 h-3" />
@@ -274,40 +342,45 @@ const AdminUsers = () => {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Verify/Unverify Button */}
+                        {/* Verify/Unverify and Ban buttons only for TRAINER and INSTITUTION */}
                         {(user.role === "TRAINER" || user.role === "INSTITUTION") && (
-                          <button
-                            onClick={() => handleVerifyUser(user.id, user.isVerified)}
-                            disabled={actionLoading[user.id]}
-                            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                              user.isVerified
-                                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                : "bg-green-600 text-white hover:bg-green-700"
-                            } disabled:opacity-50`}
-                          >
-                            {actionLoading[user.id]
-                              ? "..."
-                              : user.isVerified
-                              ? "Unverify"
-                              : "Verify"}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleVerifyUser(user.id, user.isVerified)}
+                              disabled={actionLoading[user.id]}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
+                                user.isVerified
+                                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                  : "bg-green-600 text-white hover:bg-green-700 hover:shadow-lg"
+                              } disabled:opacity-50 disabled:hover:scale-100`}
+                            >
+                              {actionLoading[user.id]
+                                ? "..."
+                                : user.isVerified
+                                ? "Unverify"
+                                : "Verify"}
+                            </button>
+                            <button
+                              onClick={() => handleBanUser(user.id, user.isBanned)}
+                              disabled={actionLoading[`ban-${user.id}`]}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
+                                user.isBanned
+                                  ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg"
+                                  : "bg-red-600 text-white hover:bg-red-700 hover:shadow-lg"
+                              } disabled:opacity-50 disabled:hover:scale-100`}
+                            >
+                              {actionLoading[`ban-${user.id}`]
+                                ? "..."
+                                : user.isBanned
+                                ? "Unban"
+                                : "Ban"}
+                            </button>
+                          </>
                         )}
-                        {/* Ban/Unban Button */}
-                        <button
-                          onClick={() => handleBanUser(user.id, user.isBanned)}
-                          disabled={actionLoading[`ban-${user.id}`] || user.role === "ADMIN"}
-                          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                            user.isBanned
-                              ? "bg-blue-600 text-white hover:bg-blue-700"
-                              : "bg-red-600 text-white hover:bg-red-700"
-                          } disabled:opacity-50`}
-                        >
-                          {actionLoading[`ban-${user.id}`]
-                            ? "..."
-                            : user.isBanned
-                            ? "Unban"
-                            : "Ban"}
-                        </button>
+                        {/* Students only show Active status - no action buttons */}
+                        {user.role === "STUDENT" && (
+                          <span className={`text-sm ${theme.textMuted}`}>-</span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -338,7 +411,7 @@ const AdminUsers = () => {
                   setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
                 }
                 disabled={pagination.page === 1}
-                className={`p-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`p-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -350,7 +423,7 @@ const AdminUsers = () => {
                   setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
                 }
                 disabled={pagination.page === pagination.pages}
-                className={`p-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`p-2 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textSecondary} hover:${theme.hoverBg} hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

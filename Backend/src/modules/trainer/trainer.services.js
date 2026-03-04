@@ -100,19 +100,30 @@ export const updateTrainerProfileService = async (userId, data) => {
 
 export const updateUserProfileService = async (userId, data) => {
   try {
+    const updateData = {};
+    
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.avatar !== undefined) updateData.profilePicture = data.avatar;
+    if (data.profilePicture !== undefined) updateData.profilePicture = data.profilePicture;
+    if (data.coverImage !== undefined) updateData.coverImage = data.coverImage;
+    if (data.headline !== undefined) updateData.headline = data.headline;
+    if (data.location !== undefined) updateData.location = data.location;
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    
     const user = await client.user.update({
       where: { id: userId },
-      data: {
-        firstName: data.firstName ?? undefined,
-        lastName: data.lastName ?? undefined,
-        profilePicture: data.avatar ?? undefined,
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
         profilePicture: true,
+        coverImage: true,
+        headline: true,
+        location: true,
+        bio: true,
         role: true,
       },
     });

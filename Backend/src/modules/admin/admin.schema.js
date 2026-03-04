@@ -14,11 +14,11 @@ export const userIdParamSchema = z.object({
 });
 
 export const verifyUserSchema = z.object({
-  verified: z.boolean().default(true),
+  verified: z.union([z.boolean(), z.string()]).transform(val => val === true || val === "true").default(true),
 });
 
 export const banUserSchema = z.object({
-  banned: z.boolean().default(true),
+  banned: z.union([z.boolean(), z.string()]).transform(val => val === true || val === "true").default(true),
   reason: z.string().max(500, "Reason must not exceed 500 characters").optional(),
 });
 
@@ -38,4 +38,25 @@ export const getReportsSchema = z.object({
 
 export const reportIdParamSchema = z.object({
   id: z.string().uuid("Invalid report ID"),
+});
+
+// Admin Password Reset Schemas
+export const adminForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address").trim().toLowerCase(),
+});
+
+export const adminVerifyOTPSchema = z.object({
+  email: z.string().email().trim().toLowerCase(),
+  otp: z.string().length(6).regex(/^\d+$/, "OTP must be 6 digits"),
+});
+
+export const adminResetPasswordSchema = z.object({
+  email: z.string().email().trim().toLowerCase(),
+  otp: z.string().length(6).regex(/^\d+$/, "OTP must be 6 digits"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const transferAdminSchema = z.object({
+  newAdminEmail: z.string().email("Invalid email address").trim().toLowerCase(),
+  currentPassword: z.string().min(1, "Current password is required"),
 });

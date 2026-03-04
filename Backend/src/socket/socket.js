@@ -126,18 +126,13 @@ export const getIO = () => {
 };
 
 // Helper functions to emit events
-// broadcast message event; if participants array is provided we also fire it to personal user rooms
+// broadcast message event to conversation room only
+// participants who have joined the room will receive it
 export const emitNewMessage = (conversationId, message, participants = []) => {
   if (io) {
-    // normal conversation room
+    // Emit only to the conversation room - users in this room will receive it
+    // This prevents duplicate messages since users join the room when opening the chat
     io.to(`conversation:${conversationId}`).emit("new_message", message);
-
-    // also notify personal rooms so clients that haven't joined yet still receive the event
-    if (Array.isArray(participants) && participants.length) {
-      participants.forEach((uid) => {
-        io.to(`user:${uid}`).emit("new_message", message);
-      });
-    }
   }
 };
 

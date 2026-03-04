@@ -247,6 +247,22 @@ class ApiService {
     return this.request(`/trainer/search${params ? `?${params}` : ""}`);
   }
 
+  static async searchInstitutions(filters = {}) {
+    // Map frontend filter names to backend query params
+    const query = {
+      location: filters.location,
+      page: filters.page ?? 1,
+      limit: filters.limit ?? 12,
+      sort: filters.sort ?? "newest",
+    };
+    const params = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(query).filter(([, v]) => v != null && v !== ""),
+      ),
+    ).toString();
+    return this.request(`/institution/search${params ? `?${params}` : ""}`);
+  }
+
   static async getTrainerProfile(id) {
     return this.request(`/trainer/${id}`);
   }
@@ -511,6 +527,13 @@ class ApiService {
     return this.request("/admin/analytics");
   }
 
+  static async transferAdmin(data) {
+    return this.request("/admin/transfer-admin", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   /* ================= EMAIL VERIFICATION ================= */
 
   static async sendVerificationOTP(data) {
@@ -552,6 +575,29 @@ class ApiService {
 
   static async resetPassword(data) {
     return this.request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /* ================= ADMIN PASSWORD RESET ================= */
+
+  static async adminForgotPassword(data) {
+    return this.request("/admin/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async adminVerifyResetOTP(data) {
+    return this.request("/admin/verify-reset-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async adminResetPassword(data) {
+    return this.request("/admin/reset-password", {
       method: "POST",
       body: JSON.stringify(data),
     });

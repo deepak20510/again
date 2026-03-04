@@ -38,8 +38,17 @@ const MessagingPanel = ({ isOpen, onClose }) => {
 
   const handleNewMessage = (message) => {
     // Update conversations list with new message, moving it to the top
-    setConversations((prev) =>
-      prev
+    setConversations((prev) => {
+      // Check if conversation exists
+      const convExists = prev.some((conv) => conv.id === message.conversationId);
+      
+      // If conversation doesn't exist, we need to reload conversations
+      if (!convExists) {
+        loadConversations();
+        return prev;
+      }
+      
+      return prev
         .map((conv) => {
           if (conv.id !== message.conversationId) return conv;
 
@@ -55,8 +64,8 @@ const MessagingPanel = ({ isOpen, onClose }) => {
             _count: { ...conv._count, messages: newCount },
           };
         })
-        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),
-    );
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    });
   };
 
   useEffect(() => {
@@ -426,16 +435,38 @@ const ChatWindowModal = ({
   useEffect(() => {
     if (!socket) return;
 
-    // join room first so we don't miss any events
+    // Join room first so we don't miss any events
     socket.emit("join_conversation", conversation.id);
-    socket.on("new_message", handleNewMessage);
+    
+    // Set up message handler before loading messages to catch any incoming messages
+    const messageHandler = (message) => {
+      if (message.conversationId === conversation.id) {
+        setMessages((prev) => {
+          // Avoid duplicates by checking if message already exists
+          if (prev.some((m) => m.id === message.id)) {
+            return prev;
+          }
+          return [...prev, message];
+        });
+        
+        // Notify parent component
+        onNewMessage && onNewMessage(message);
+        
+        // Auto-scroll to bottom
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    };
+    
+    socket.on("new_message", messageHandler);
 
-    // then fetch history
+    // Then fetch history
     loadMessages();
 
     return () => {
       socket.emit("leave_conversation", conversation.id);
-      socket.off("new_message", handleNewMessage);
+      socket.off("new_message", messageHandler);
     };
   }, [conversation.id, socket]);
 
@@ -459,45 +490,39 @@ const ChatWindowModal = ({
     }
   };
 
-  const handleNewMessage = (message) => {
-    // bubble up to parent component as well so the conversation list can update
-    onNewMessage && onNewMessage(message);
-
-    if (message.conversationId === conversation.id) {
-      setMessages((prev) => {
-        // Avoid duplicates
-        if (prev.some((m) => m.id === message.id)) {
-          return prev;
-        }
-        return [...prev, message];
-      });
-
-      // Auto-scroll to bottom
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    }
-  };
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
+
+    const tempContent = newMessage.trim();
+    
+    // Clear input immediately for better UX
+    setNewMessage("");
 
     try {
       setSending(true);
       const response = await ApiService.sendMessage({
         conversationId: conversation.id,
-        content: newMessage.trim(),
+        content: tempContent,
       });
       const sent = response.data;
 
-      // immediately show our own message (optimistic update)
-      setMessages((prev) => [...prev, sent]);
+      // Add the sent message to UI (with duplicate check)
+      setMessages((prev) => {
+        // Avoid duplicates if socket event arrived first
+        if (prev.some((m) => m.id === sent.id)) {
+          return prev;
+        }
+        return [...prev, sent];
+      });
+      
+      // Notify parent component to update conversation list
       onNewMessage && onNewMessage(sent);
 
-      setNewMessage("");
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Restore message on error so user can retry
+      setNewMessage(tempContent);
     } finally {
       setSending(false);
     }

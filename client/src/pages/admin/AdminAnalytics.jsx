@@ -92,7 +92,7 @@ const AdminAnalytics = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className={`text-2xl font-bold ${theme.textPrimary}`}>Analytics Overview</h1>
-          <p className={`${theme.textSecondary} mt-1`}>
+          <p className="mt-1 text-2xl font-black text-black">
             Platform performance and user statistics
           </p>
         </div>

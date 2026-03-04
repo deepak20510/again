@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import client from "../../db.js";
 import { AppError } from "../../utils/AppError.js";
 import { sendVerificationOTPEmail } from "../../services/email.service.js";

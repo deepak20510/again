@@ -4,7 +4,6 @@ export const searchTrainersService = async (filters) => {
   const { skill, location, minExp, maxExp, page, limit, sort } = filters;
 
   const where = {
-    verified: true,
     isActive: true,
   };
 
@@ -30,23 +29,28 @@ export const searchTrainersService = async (filters) => {
     experience_asc: { experience: "asc" },
     experience_desc: { experience: "desc" },
     newest: { createdAt: "desc" },
+    rating: { rating: "desc" },
   };
 
   const [trainers, total] = await Promise.all([
     client.trainerProfile.findMany({
       where,
-      orderBy: orderByMap[sort],
+      orderBy: orderByMap[sort] || { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
-      select: {
-        id: true,
-        bio: true,
-        location: true,
-        experience: true,
-        skills: true,
-        rating: true,
-        verified: true,
-        createdAt: true,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            profilePicture: true,
+            role: true,
+            isVerified: true,
+          },
+        },
       },
     }),
     client.trainerProfile.count({ where }),

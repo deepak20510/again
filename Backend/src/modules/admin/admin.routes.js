@@ -8,7 +8,13 @@ import {
   getReports,
   takeReportAction,
   getAnalytics,
+  transferAdmin,
 } from "./admin.controller.js";
+import {
+  adminForgotPassword,
+  verifyAdminResetOTP,
+  adminResetPassword,
+} from "./adminPasswordReset.controller.js";
 import {
   getUsersSchema,
   userIdParamSchema,
@@ -17,11 +23,36 @@ import {
   reportActionSchema,
   getReportsSchema,
   reportIdParamSchema,
+  adminForgotPasswordSchema,
+  adminVerifyOTPSchema,
+  adminResetPasswordSchema,
+  transferAdminSchema,
 } from "./admin.schema.js";
 
 const router = express.Router();
 
-// All routes require admin authentication
+/**
+ * @route   POST /api/v1/admin/forgot-password
+ * @desc    Request password reset OTP for admin
+ * @access  Public
+ */
+router.post("/forgot-password", validate(adminForgotPasswordSchema), adminForgotPassword);
+
+/**
+ * @route   POST /api/v1/admin/verify-reset-otp
+ * @desc    Verify admin reset OTP
+ * @access  Public
+ */
+router.post("/verify-reset-otp", validate(adminVerifyOTPSchema), verifyAdminResetOTP);
+
+/**
+ * @route   POST /api/v1/admin/reset-password
+ * @desc    Reset admin password with OTP
+ * @access  Public
+ */
+router.post("/reset-password", validate(adminResetPasswordSchema), adminResetPassword);
+
+// All routes below require admin authentication
 router.use(adminMiddleware);
 
 /**
@@ -80,5 +111,12 @@ router.patch(
  * @access  Admin only
  */
 router.get("/analytics", getAnalytics);
+
+/**
+ * @route   POST /api/v1/admin/transfer-admin
+ * @desc    Transfer admin privileges to another user
+ * @access  Admin only
+ */
+router.post("/transfer-admin", validate(transferAdminSchema), transferAdmin);
 
 export default router;

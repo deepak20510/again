@@ -17,6 +17,9 @@ import {
   CheckCircle2,
   MoreHorizontal,
   Share2,
+  X,
+  FileText,
+  BookOpen,
 } from "lucide-react";
 import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 
@@ -42,6 +45,21 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const [urlCopied, setUrlCopied] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  // Create Post Modal State
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const [postText, setPostText] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Trainers and Institutions State
+  const [trainers, setTrainers] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
+  const [showAllTrainers, setShowAllTrainers] = useState(false);
+  const [showAllInstitutions, setShowAllInstitutions] = useState(false);
+  const [loadingTrainers, setLoadingTrainers] = useState(false);
+  const [loadingInstitutions, setLoadingInstitutions] = useState(false);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -80,7 +98,37 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
   useEffect(() => {
     loadProfile();
+    fetchTrainers();
+    fetchInstitutions();
   }, [loadProfile]);
+
+  const fetchTrainers = async () => {
+    try {
+      setLoadingTrainers(true);
+      const response = await ApiService.searchTrainers({ limit: 10 });
+      if (response.success) {
+        setTrainers(response.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch trainers:", error);
+    } finally {
+      setLoadingTrainers(false);
+    }
+  };
+
+  const fetchInstitutions = async () => {
+    try {
+      setLoadingInstitutions(true);
+      const response = await ApiService.searchInstitutions({ limit: 10 });
+      if (response.success) {
+        setInstitutions(response.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch institutions:", error);
+    } finally {
+      setLoadingInstitutions(false);
+    }
+  };
 
   const loadPosts = useCallback(async () => {
     try {
@@ -115,6 +163,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           author: post.author
             ? {
                 ...post.author,
+                // Build name from firstName and lastName, fallback to existing name
+                name: post.author.firstName
+                  ? `${post.author.firstName} ${post.author.lastName || ""}`.trim()
+                  : post.author.name || "User",
                 profilePicture: post.author.profilePicture
                   ? post.author.profilePicture.startsWith("http")
                     ? post.author.profilePicture
@@ -124,7 +176,15 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                     ? profileData.profilePicture || profileData.avatar
                     : null,
               }
-            : null,
+            : {
+                // Fallback author object if post.author is null
+                id: profileData?.id,
+                name: profileData?.firstName
+                  ? `${profileData.firstName} ${profileData.lastName || ""}`.trim()
+                  : "User",
+                profilePicture: profileData?.profilePicture || profileData?.avatar,
+                role: profileData?.role,
+              },
         }));
         setPosts(normalizedPosts);
       }
@@ -383,6 +443,88 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     setSaveSuccess(true);
   };
 
+  // Create Post Handlers
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePdfUpload = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === "application/pdf") {
+      setSelectedImage(file);
+      setImagePreview("pdf");
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
+  const handlePostSubmit = async () => {
+    if (!postText.trim() && !selectedImage) return;
+    if (postText.length > 700) return;
+
+    setIsSubmitting(true);
+    try {
+      let imageUrl = null;
+
+      // Upload image if selected
+      if (selectedImage && imagePreview !== "pdf") {
+        const uploadResponse = await ApiService.uploadFile(selectedImage, "Post Image");
+        if (uploadResponse.success) {
+          imageUrl = uploadResponse.data.url;
+        }
+      } else if (selectedImage && imagePreview === "pdf") {
+        const uploadResponse = await ApiService.uploadFile(selectedImage, "Post PDF");
+        if (uploadResponse.success) {
+          imageUrl = uploadResponse.data.url;
+        }
+      }
+
+      // Create post
+      const response = await ApiService.createPost({
+        content: postText.trim(),
+        imageUrl: imageUrl,
+        type: imagePreview === "pdf" ? "pdf" : selectedImage ? "image" : "text",
+      });
+
+      if (response.success) {
+        // Reset form
+        setPostText("");
+        setSelectedImage(null);
+        setImagePreview(null);
+        setIsCreatePostModalOpen(false);
+        
+        // Refresh posts
+        loadPosts();
+        setSaveSuccess(true);
+      } else {
+        alert(response.message || "Failed to create post");
+      }
+    } catch (error) {
+      console.error("Failed to create post:", error);
+      alert(error.message || "Failed to create post");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const closeCreatePostModal = () => {
+    setIsCreatePostModalOpen(false);
+    setPostText("");
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
   return (
     <div
       className={`${theme.bg} min-h-screen pb-10 transition-colors duration-300`}
@@ -483,11 +625,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   >
                     <Pencil size={18} />
                     Edit Profile
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-full font-medium border ${theme.cardBorder} ${theme.textPrimary} ${theme.hoverBg} transition-all duration-300`}
-                  >
-                    View as Public
                   </button>
                 </>
               ) : (
@@ -720,11 +857,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                     </span>
                     {isOwnProfile && ( // Show Create Post button only on own profile
                       <button
-                        onClick={() =>
-                          window.dispatchEvent(
-                            new CustomEvent("openCreatePostModal"),
-                          )
-                        }
+                        onClick={() => setIsCreatePostModalOpen(true)}
                         className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
                       >
                         <Plus size={16} />
@@ -1003,129 +1136,155 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
           {/* Right Sidebar */}
           <div className="col-span-1 space-y-6">
-            {/* People you may know */}
-            <div
-              className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
-            >
-              <h3 className={`font-semibold ${theme.textPrimary} mb-4`}>
-                {isStudent
-                  ? "People you may know"
-                  : isTrainer
-                    ? "Students you may know"
-                    : "Trainers you may know"}
-              </h3>
-
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <img
-                      src={`https://i.pravatar.cc/50?img=${i + 10}`}
-                      alt="Profile"
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                    <div className="flex-1">
-                      <h4
-                        className={`font-medium text-sm ${theme.textPrimary}`}
-                      >
-                        {isStudent
-                          ? ["Raj Kumar", "Priya Singh", "Amit Sharma"][i - 1]
-                          : isTrainer
-                            ? ["Deepak Mahato", "Neha Gupta", "Rahul Verma"][
-                                i - 1
-                              ]
-                            : ["John Trainer", "Sarah Lee", "Mike Chen"][i - 1]}
-                      </h4>
-                      <p className={`text-xs ${theme.textMuted} mt-0.5`}>
-                        {isStudent
-                          ? [
-                              "Software Engineer at Google",
-                              "Data Scientist at Amazon",
-                              "Product Manager at Flipkart",
-                            ][i - 1]
-                          : isTrainer
-                            ? [
-                                "Computer Science Student",
-                                "Aspiring Developer",
-                                "Web Development Enthusiast",
-                              ][i - 1]
-                            : [
-                                "JavaScript Expert",
-                                "Python Specialist",
-                                "Full Stack Developer",
-                              ][i - 1]}
-                      </p>
-                      <button
-                        className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
-                      >
-                        {isInstitute ? "Hire" : "Connect"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                className={`mt-4 text-sm ${theme.textMuted} hover:${theme.textPrimary} transition-colors duration-300 flex items-center gap-1`}
+            {/* Quick Actions - Only for Trainer (own profile) */}
+            {isTrainer && isOwnProfile && (
+              <div
+                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
               >
-                Show all →
-              </button>
-            </div>
-
-            {/* You might like */}
-            <div
-              className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
-            >
-              <h3 className={`font-semibold ${theme.textPrimary} mb-4`}>
-                {isStudent
-                  ? "Pages you might like"
-                  : isTrainer
-                    ? "Institutes hiring now"
-                    : "Top training partners"}
-              </h3>
-
-              <div className="space-y-4">
-                {[1, 2].map((i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <img
-                      src={`https://via.placeholder.com/50`}
-                      alt="Page"
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                    <div className="flex-1">
-                      <h4
-                        className={`font-medium text-sm ${theme.textPrimary}`}
-                      >
-                        {isStudent
-                          ? ["Apna College", "Infosys Springboard"][i - 1]
-                          : isTrainer
-                            ? ["Tech Academy", "Edureka"][i - 1]
-                            : ["Google for Education", "Microsoft Learn"][
-                                i - 1
-                              ]}
-                      </h4>
-                      <p className={`text-xs ${theme.textMuted} mt-0.5`}>
-                        {isStudent
-                          ? ["184,992 followers", "707,448 followers"][i - 1]
-                          : isTrainer
-                            ? [
-                                "45 trainers • 1200 students",
-                                "120+ trainers • 5000+ students",
-                              ][i - 1]
-                            : [
-                                "Corporate Training Partner",
-                                "Certification Provider",
-                              ][i - 1]}
-                      </p>
-                      <button
-                        className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
-                      >
-                        + Follow
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <h3 className={`font-semibold ${theme.textPrimary} mb-4`}>
+                  Quick Actions
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => navigate("/trainer/courses")}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.hoverBg} ${theme.textPrimary} hover:bg-blue-500/10 hover:text-blue-400 transition-all duration-300 font-medium`}
+                  >
+                    <BookOpen size={18} />
+                    My Courses
+                  </button>
+                  <button
+                    onClick={() => navigate("/trainer/reviews")}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.hoverBg} ${theme.textPrimary} hover:bg-blue-500/10 hover:text-blue-400 transition-all duration-300 font-medium`}
+                  >
+                    <Star size={18} />
+                    Reviews
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Trainers you may know - Only show for TRAINER and STUDENT */}
+            {(isTrainer || isStudent) && (
+              <div
+                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
+              >
+                <h3 className={`font-semibold ${theme.textPrimary} mb-4`}>
+                  Trainers you may know
+                </h3>
+
+                {loadingTrainers ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin h-6 w-6 border-b-2 border-blue-500 rounded-full" />
+                  </div>
+                ) : trainers.length === 0 ? (
+                  <p className={`text-sm ${theme.textMuted} text-center py-4`}>
+                    No trainers found
+                  </p>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {(showAllTrainers ? trainers : trainers.slice(0, 3)).map((trainer) => (
+                        <div key={trainer.id} className="flex items-start gap-3">
+                          <img
+                            src={trainer.user?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(trainer.user?.firstName || "T")}&background=random`}
+                            alt={trainer.user?.firstName || "Trainer"}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                          <div className="flex-1">
+                            <h4
+                              className={`font-medium text-sm ${theme.textPrimary}`}
+                            >
+                              {trainer.user?.firstName
+                                ? `${trainer.user.firstName} ${trainer.user.lastName || ""}`.trim()
+                                : "Trainer"}
+                            </h4>
+                            <p className={`text-xs ${theme.textMuted} mt-0.5`}>
+                              {trainer.bio || trainer.skills?.slice(0, 3).join(", ") || "Expert Trainer"}
+                            </p>
+                            <button
+                              onClick={() => navigate(`/trainer/profile/${trainer.user?.username || trainer.user?.id}`)}
+                              className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
+                            >
+                              View Profile
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {trainers.length > 3 && (
+                      <button
+                        onClick={() => setShowAllTrainers(!showAllTrainers)}
+                        className={`mt-4 text-sm ${theme.textMuted} hover:${theme.textPrimary} transition-colors duration-300 flex items-center gap-1`}
+                      >
+                        {showAllTrainers ? "Show less" : `Show all ${trainers.length} trainers`} →
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Institutes hiring now - Show for TRAINER and STUDENT */}
+            {(isTrainer || isStudent) && (
+              <div
+                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
+              >
+                <h3 className={`font-semibold ${theme.textPrimary} mb-4`}>
+                  Institutes hiring now
+                </h3>
+
+                {loadingInstitutions ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin h-6 w-6 border-b-2 border-blue-500 rounded-full" />
+                  </div>
+                ) : institutions.length === 0 ? (
+                  <p className={`text-sm ${theme.textMuted} text-center py-4`}>
+                    No institutions found
+                  </p>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {(showAllInstitutions ? institutions : institutions.slice(0, 3)).map((institution) => (
+                        <div key={institution.id} className="flex items-start gap-3">
+                          <img
+                            src={institution.user?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(institution.name || "I")}&background=random`}
+                            alt={institution.name || "Institution"}
+                            className="w-12 h-12 rounded-lg object-cover"
+                          />
+                          <div className="flex-1">
+                            <h4
+                              className={`font-medium text-sm ${theme.textPrimary}`}
+                            >
+                              {institution.name || "Institution"}
+                            </h4>
+                            <p className={`text-xs ${theme.textMuted} mt-0.5`}>
+                              {institution.location || "Location not set"}
+                              {institution._count?.requests > 0 && ` • ${institution._count.requests} hiring`}
+                            </p>
+                            <button
+                              onClick={() => navigate(`/institute/profile/${institution.user?.username || institution.user?.id}`)}
+                              className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
+                            >
+                              View Profile
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {institutions.length > 3 && (
+                      <button
+                        onClick={() => setShowAllInstitutions(!showAllInstitutions)}
+                        className={`mt-4 text-sm ${theme.textMuted} hover:${theme.textPrimary} transition-colors duration-300 flex items-center gap-1`}
+                      >
+                        {showAllInstitutions ? "Show less" : `Show all ${institutions.length} institutes`} →
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Profile language */}
             <div
@@ -1198,6 +1357,132 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         onClose={() => setIsMessageModalOpen(false)}
         recipient={profileData}
       />
+
+      {/* Create Post Modal */}
+      {isCreatePostModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-start pt-16 z-50 px-4">
+          <div className={`${theme.cardBg} w-full max-w-xl rounded-2xl shadow-2xl border ${theme.cardBorder} overflow-hidden`}>
+            {/* Modal Header */}
+            <div className={`flex justify-between items-center px-5 py-4 border-b ${theme.cardBorder}`}>
+              <h3 className={`font-bold text-lg ${theme.textPrimary}`}>Create Post</h3>
+              <button
+                onClick={closeCreatePostModal}
+                className={`p-2 rounded-full ${theme.hoverBg} ${theme.textMuted} hover:${theme.textPrimary} transition-colors`}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* User Info */}
+            <div className="flex items-center gap-3 px-5 py-3">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
+                <span className="text-white font-bold text-sm">
+                  {(authUser?.firstName || authUser?.name || "U").charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <div className={`font-semibold text-sm ${theme.textPrimary}`}>
+                  {authUser?.firstName || authUser?.name || "Anonymous User"}
+                </div>
+                <div className={`text-xs ${theme.textMuted}`}>Post to anyone • Public</div>
+              </div>
+            </div>
+
+            {/* Post Content */}
+            <div className="px-5 pb-3">
+              <textarea
+                value={postText}
+                onChange={(e) => setPostText(e.target.value)}
+                rows="4"
+                className={`w-full border-none outline-none resize-none text-base ${theme.textPrimary} bg-transparent placeholder:${theme.textMuted}`}
+                placeholder="What do you want to talk about?"
+              />
+
+              {/* Image / PDF Preview */}
+              {imagePreview && (
+                <div className="mt-3 relative">
+                  {imagePreview === "pdf" && selectedImage ? (
+                    <div className={`flex items-center gap-3 p-4 ${theme.hoverBg} rounded-xl border ${theme.cardBorder}`}>
+                      <FileText className="w-10 h-10 text-red-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium text-sm ${theme.textPrimary} truncate`}>
+                          {selectedImage.name}
+                        </p>
+                        <p className={`text-xs ${theme.textMuted}`}>PDF document</p>
+                      </div>
+                      <button onClick={removeImage} className={`${theme.textMuted} hover:text-red-500 p-1`}>
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full rounded-xl max-h-64 object-cover"
+                      />
+                      <button
+                        onClick={removeImage}
+                        className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Media Options */}
+            <div className={`px-5 py-3 border-t ${theme.cardBorder}`}>
+              <div className="flex items-center gap-2">
+                <label className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:text-blue-500 cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Photo
+                </label>
+
+                <label className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:text-blue-500 cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handlePdfUpload}
+                    className="hidden"
+                  />
+                  <FileText className="w-4 h-4 text-red-500" />
+                  PDF
+                </label>
+              </div>
+            </div>
+
+            {/* Post Button */}
+            <div className={`flex justify-between items-center px-5 py-3 border-t ${theme.cardBorder}`}>
+              <span className={`text-xs ${postText.length > 650 ? "text-red-500" : theme.textMuted}`}>
+                {postText.length}/700
+              </span>
+              <button
+                disabled={(!postText.trim() && !selectedImage) || postText.length > 700 || isSubmitting}
+                onClick={handlePostSubmit}
+                className="bg-blue-600 text-white px-6 py-2 rounded-full disabled:bg-blue-400/50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors font-semibold text-sm"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Posting...
+                  </span>
+                ) : "Post"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

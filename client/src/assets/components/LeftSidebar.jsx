@@ -144,14 +144,46 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
       <div
         className={`${theme.cardBg} rounded-xl shadow-lg p-4 space-y-1 border ${theme.cardBorder} transition-all duration-300`}
       >
-        {menuItems.map((item) => (
-          <p
-            key={item.id}
-            className={`px-3 py-2.5 rounded-lg ${theme.hoverBg} cursor-pointer transition-all duration-300 ${theme.textSecondary} ${theme.hoverText} flex items-center gap-3`}
-          >
-            <span className="text-sm">{item.label}</span>
-          </p>
-        ))}
+        {menuItems.map((item) => {
+          const handleClick = () => {
+            // Navigate based on item id and user type
+            if (userType === USER_TYPES.TRAINER) {
+              if (item.id === "my-courses") {
+                navigate("/trainer/courses");
+              } else if (item.id === "reviews") {
+                navigate("/trainer/reviews");
+              }
+            } else if (userType === USER_TYPES.STUDENT) {
+              if (item.id === "saved-courses") {
+                navigate("/student/courses");
+              } else if (item.id === "groups") {
+                navigate("/student/groups");
+              } else if (item.id === "events") {
+                navigate("/student/events");
+              } else if (item.id === "certificates") {
+                navigate("/student/certificates");
+              }
+            } else if (userType === USER_TYPES.INSTITUTE) {
+              if (item.id === "find-trainers") {
+                navigate("/institute/find-trainers");
+              } else if (item.id === "hired-trainers") {
+                navigate("/institute/hired-trainers");
+              } else if (item.id === "post-job") {
+                navigate("/institute/post-job");
+              }
+            }
+          };
+
+          return (
+            <p
+              key={item.id}
+              onClick={handleClick}
+              className={`px-3 py-2.5 rounded-lg ${theme.hoverBg} cursor-pointer transition-all duration-300 ${theme.textSecondary} ${theme.hoverText} flex items-center gap-3 hover:translate-x-1`}
+            >
+              <span className="text-sm">{item.label}</span>
+            </p>
+          );
+        })}
       </div>
     </div>
   );

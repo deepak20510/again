@@ -1,6 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+import prisma from "../../db.js";
 
-const prisma = new PrismaClient();
+const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 4;
 
 /**
  * Get all users with filtering and pagination
@@ -16,8 +17,12 @@ export const getUsers = async (req, res) => {
     const where = {};
     
     if (role) where.role = role;
-    if (isVerified !== undefined) where.isVerified = isVerified;
-    if (isBanned !== undefined) where.isBanned = isBanned;
+    if (isVerified !== undefined && isVerified !== '') {
+      where.isVerified = isVerified === 'true' || isVerified === true;
+    }
+    if (isBanned !== undefined && isBanned !== '') {
+      where.isBanned = isBanned === 'true' || isBanned === true;
+    }
     
     if (search) {
       where.OR = [
@@ -92,15 +97,23 @@ export const getUsers = async (req, res) => {
 export const verifyUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { verified = true } = req.body;
+    const { verified = true } = req.validated || req.body;
     const adminId = req.user.id;
 
     const user = await prisma.user.findUnique({
       where: { id },
-      include: {
-        trainerProfile: true,
-        institutionProfile: true,
-      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        trainerProfile: {
+          select: { id: true, userId: true }
+        },
+        institutionProfile: {
+          select: { id: true, userId: true }
+        },
+      }
     });
 
     if (!user) {
@@ -157,6 +170,7 @@ export const verifyUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };
@@ -168,15 +182,23 @@ export const verifyUser = async (req, res) => {
 export const banUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { banned = true, reason } = req.body;
+    const { banned = true, reason } = req.validated || req.body;
     const adminId = req.user.id;
 
     const user = await prisma.user.findUnique({
       where: { id },
-      include: {
-        trainerProfile: true,
-        institutionProfile: true,
-      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isBanned: true,
+        trainerProfile: {
+          select: { id: true, userId: true }
+        },
+        institutionProfile: {
+          select: { id: true, userId: true }
+        },
+      }
     });
 
     if (!user) {
@@ -252,6 +274,7 @@ export const banUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };
@@ -560,13 +583,19 @@ export const getAnalytics = async (req, res) => {
     ]);
 
     // Get daily user registrations for the last 30 days
-    const dailyRegistrations = await prisma.$queryRaw`
+    const dailyRegistrationsRaw = await prisma.$queryRaw`
       SELECT DATE("createdAt") as date, COUNT(*) as count
       FROM "User"
       WHERE "createdAt" >= ${thirtyDaysAgo}
       GROUP BY DATE("createdAt")
       ORDER BY date ASC
     `;
+    
+    // Convert BigInt to Number for JSON serialization
+    const dailyRegistrations = dailyRegistrationsRaw.map(item => ({
+      date: item.date,
+      count: Number(item.count)
+    }));
 
     res.json({
       success: true,
@@ -594,6 +623,110 @@ export const getAnalytics = async (req, res) => {
     });
   } catch (error) {
     console.error("Error getting analytics:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Transfer admin privileges to another user
+ * POST /admin/transfer-admin
+ */
+export const transferAdmin = async (req, res) => {
+  try {
+    const { newAdminEmail, currentPassword } = req.body;
+    const currentAdminId = req.user.id;
+
+    // Verify current admin's password
+    const currentAdmin = await prisma.user.findUnique({
+      where: { id: currentAdminId },
+      select: { id: true, password: true, email: true }
+    });
+
+    if (!currentAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: "Current admin not found",
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(currentPassword, currentAdmin.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
+    // Find the new admin user
+    const newAdmin = await prisma.user.findUnique({
+      where: { email: newAdminEmail.toLowerCase().trim() },
+      select: { id: true, email: true, role: true, firstName: true, lastName: true }
+    });
+
+    if (!newAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found with this email",
+      });
+    }
+
+    if (newAdmin.role === "ADMIN") {
+      return res.status(400).json({
+        success: false,
+        message: "This user is already an admin",
+      });
+    }
+
+    // Transfer admin privileges in a transaction
+    await prisma.$transaction([
+      // Promote new user to admin
+      prisma.user.update({
+        where: { id: newAdmin.id },
+        data: { 
+          role: "ADMIN",
+          isVerified: true,
+          isBanned: false 
+        },
+      }),
+      // Demote current admin to student (or you can delete them)
+      prisma.user.update({
+        where: { id: currentAdminId },
+        data: { role: "STUDENT" },
+      }),
+      // Log the action
+      prisma.auditLog.create({
+        data: {
+          userId: currentAdminId,
+          action: "TRANSFER_ADMIN",
+          resource: "User",
+          details: {
+            previousAdmin: currentAdmin.email,
+            newAdmin: newAdmin.email,
+            newAdminId: newAdmin.id,
+          },
+        },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      message: `Admin privileges transferred to ${newAdminEmail} successfully`,
+      data: {
+        newAdmin: {
+          id: newAdmin.id,
+          email: newAdmin.email,
+          firstName: newAdmin.firstName,
+          lastName: newAdmin.lastName,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error transferring admin:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
