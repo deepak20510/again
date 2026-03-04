@@ -143,3 +143,62 @@ export const updateUserProfileService = async (userId, data) => {
     throw error;
   }
 };
+
+
+/* ================= GET TRAINER REVIEWS ================= */
+export const getTrainerReviewsService = async (userId) => {
+  // Get all posts by this trainer
+  const posts = await client.post.findMany({
+    where: {
+      authorId: userId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      content: true,
+      imageUrl: true,
+      createdAt: true,
+    },
+  });
+
+  const postIds = posts.map(p => p.id);
+
+  // Get all reviews for these posts
+  const reviews = await client.postReview.findMany({
+    where: {
+      postId: { in: postIds },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          profilePicture: true,
+          username: true,
+        },
+      },
+      post: {
+        select: {
+          id: true,
+          content: true,
+          imageUrl: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // Calculate average rating
+  const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+  const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+  return {
+    reviews,
+    averageRating,
+    totalReviews: reviews.length,
+  };
+};

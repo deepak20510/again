@@ -7,6 +7,7 @@ import {
   getMyProfile,
   updateMyProfile,
   searchTrainers,
+  getMyReviews,
 } from "./trainer.controller.js";
 import {
   createTrainerProfileSchema,
@@ -46,6 +47,9 @@ router.post(
 
 // Get own profile
 router.get("/profile", authMiddleware(["TRAINER"]), getMyProfile);
+
+// Get own reviews
+router.get("/reviews", authMiddleware(["TRAINER"]), getMyReviews);
 
 // Update own profile
 router.put(

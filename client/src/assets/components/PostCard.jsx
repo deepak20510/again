@@ -59,6 +59,9 @@ export default function PostCard({
         const { averageRating, totalReviews } = response.data;
         // Update parent component's post data
         onReviewUpdate?.(post.id, { averageRating, totalReviews });
+        
+        // Dispatch custom event to notify Reviews page
+        window.dispatchEvent(new CustomEvent("reviewAdded"));
       }
         
       // Reload reviews if modal is open
@@ -179,7 +182,12 @@ export default function PostCard({
   const authorAvatar = post.author?.profilePicture || post.author?.avatar;
   const [imageError, setImageError] = useState(false);
 
-  const isPDF = post.imageUrl?.toLowerCase().endsWith(".pdf") || post.type === "article";
+  // Check if post is a PDF - check type first, then URL patterns
+  const isPDF = post.type === "article" || 
+                post.type === "pdf" || 
+                post.imageUrl?.toLowerCase().includes(".pdf") ||
+                post.imageUrl?.toLowerCase().includes("/raw/upload/") || // Cloudinary raw PDFs
+                post.imageUrl?.toLowerCase().match(/\.(pdf)(\?|$|#)/);
 
   return (
     <>

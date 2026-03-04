@@ -9,11 +9,17 @@ const router = express.Router();
 // Configure Cloudinary storage for simple uploads
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: "uploads",
-    allowed_formats: ["jpg", "jpeg", "png", "pdf", "webp"],
-    resource_type: "auto",
-    transformation: [{ quality: "auto" }],
+  params: async (req, file) => {
+    // Determine resource type based on file type
+    const isPDF = file.mimetype === "application/pdf";
+    
+    return {
+      folder: "uploads",
+      allowed_formats: ["jpg", "jpeg", "png", "pdf", "webp"],
+      resource_type: isPDF ? "raw" : "auto", // Use 'raw' for PDFs to preserve them
+      transformation: isPDF ? [] : [{ quality: "auto" }], // No transformation for PDFs
+      public_id: `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, "")}`, // Custom filename
+    };
   },
 });
 
@@ -56,7 +62,9 @@ router.post(
         filename: req.file.filename,
         path: req.file.path,
         size: req.file.size,
-        mimetype: req.file.mimetype
+        mimetype: req.file.mimetype,
+        resourceType: req.file.resource_type,
+        format: req.file.format
       });
 
       // Always use Cloudinary secure HTTPS URL

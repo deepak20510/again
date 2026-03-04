@@ -204,6 +204,10 @@ class ApiService {
     return this.request("/trainer/profile");
   }
 
+  static async getMyReviews() {
+    return this.request("/trainer/reviews");
+  }
+
   static async getUserProfile(id) {
     const url = id ? `/users/profile/${id}` : "/users/profile";
     return this.request(url);

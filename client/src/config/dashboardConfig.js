@@ -41,8 +41,6 @@ export const DASHBOARD_CONFIG = {
   trainer: {
     navbar: {
       navItems: [
-        { id: "my-courses", label: "My Courses", icon: "BookOpen" },
-        { id: "students", label: "Students", icon: "Users" },
         { id: "messaging", label: "Messaging", icon: "MessageSquare" },
       ],
     },
@@ -54,7 +52,6 @@ export const DASHBOARD_CONFIG = {
         avatar: "https://i.pravatar.cc/120",
       },
       menuItems: [
-        { id: "my-courses", label: "My Courses", icon: "BookOpen" },
         { id: "reviews", label: "Reviews", icon: "Star" },
       ],
     },

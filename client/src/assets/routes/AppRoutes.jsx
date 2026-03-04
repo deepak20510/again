@@ -16,8 +16,6 @@ import AdminUsers from "../../pages/admin/AdminUsers";
 import AdminReports from "../../pages/admin/AdminReports";
 import AdminAnalytics from "../../pages/admin/AdminAnalytics";
 import AdminLogin from "../../pages/admin/AdminLogin";
-import MyCourses from "../pages/trainer/MyCourses";
-import Students from "../pages/trainer/Students";
 import Reviews from "../pages/trainer/Reviews";
 import { USER_TYPES } from "../../config/dashboardConfig";
 
@@ -125,22 +123,6 @@ export default function AppRoutes() {
         />
 
         {/* Trainer Specific Routes */}
-        <Route
-          path="/trainer/courses"
-          element={
-            <ProtectedRoute requiredRole="TRAINER">
-              <MyCourses />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trainer/students"
-          element={
-            <ProtectedRoute requiredRole="TRAINER">
-              <Students />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/trainer/reviews"
           element={

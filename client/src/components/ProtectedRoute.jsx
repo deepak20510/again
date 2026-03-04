@@ -1,7 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect } from 'react';
-import LoadingScreen from './LoadingScreen';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -16,9 +15,13 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show loading screen while checking auth or during initial load
+  // Show simple spinner while checking auth or during initial load
   if (loading || showLoader) {
-    return <LoadingScreen message="Loading your dashboard" />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

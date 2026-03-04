@@ -263,95 +263,94 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
 
         {/* Right Side */}
         <div className="flex items-center gap-1 sm:gap-1">
-          {/* Nav Items (including Notifications) - Desktop Only */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {/* Notification Item */}
-            <div className="relative" ref={notificationRef}>
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 group min-w-14 ${
-                  showNotifications
-                    ? `${theme.accentBg}/10 ${theme.accentColor}`
-                    : `${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText}`
-                }`}
+          {/* Notification Button - Always Visible */}
+          <div className="relative" ref={notificationRef}>
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className={`flex items-center justify-center p-2 rounded-lg transition-all duration-200 ${
+                showNotifications
+                  ? `${theme.accentBg}/10 ${theme.accentColor}`
+                  : `${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText}`
+              }`}
+              aria-label="Notifications"
+            >
+              <div className="relative">
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-medium animate-pulse">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            {/* Notification Dropdown */}
+            {showNotifications && (
+              <div 
+                className={`absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} z-50 max-h-125 overflow-hidden flex flex-col animate-slideDown`}
+                style={{
+                  animation: 'slideDown 0.2s ease-out'
+                }}
               >
-                <div className="relative">
-                  <Bell size={20} />
+                <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
+                  <h3 className={`font-semibold ${theme.textPrimary}`}>Notifications</h3>
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-medium animate-pulse">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markAllAsRead(e);
+                      }}
+                      className={`text-sm ${theme.accentColor} hover:underline flex items-center gap-1`}
+                    >
+                      <Check size={14} />
+                      Mark all read
+                    </button>
                   )}
                 </div>
-                <span className="text-[10px] font-medium whitespace-nowrap">Notifications</span>
-              </button>
 
-              {/* Notification Dropdown */}
-              {showNotifications && (
-                <div 
-                  className={`absolute right-0 mt-2 w-96 ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} z-50 max-h-125 overflow-hidden flex flex-col animate-slideDown`}
-                  style={{
-                    animation: 'slideDown 0.2s ease-out'
-                  }}
-                >
-                  <div className={`p-4 border-b ${theme.cardBorder} flex items-center justify-between`}>
-                    <h3 className={`font-semibold ${theme.textPrimary}`}>Notifications</h3>
-                    {unreadCount > 0 && (
+                <div className="overflow-y-auto flex-1">
+                  {loadingNotifications ? (
+                    <div className="p-8 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto" />
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mx-auto mb-3`}>
+                        <Bell className={`w-8 h-8 ${theme.textMuted}`} />
+                      </div>
+                      <p className={`${theme.textMuted}`}>No notifications</p>
+                    </div>
+                  ) : (
+                    notifications.map(notification => (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          markAllAsRead(e);
-                        }}
-                        className={`text-sm ${theme.accentColor} hover:underline flex items-center gap-1`}
+                        key={notification.id}
+                        onClick={() => handleNotificationClick(notification)}
+                        className={`w-full p-4 border-b ${theme.cardBorder} ${theme.hoverBg} text-left transition ${
+                          !notification.isRead ? `${theme.accentBg}/5` : ""
+                        }`}
                       >
-                        <Check size={14} />
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="overflow-y-auto flex-1">
-                    {loadingNotifications ? (
-                      <div className="p-8 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto" />
-                      </div>
-                    ) : notifications.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <div className={`w-16 h-16 rounded-full ${theme.inputBg} flex items-center justify-center mx-auto mb-3`}>
-                          <Bell className={`w-8 h-8 ${theme.textMuted}`} />
-                        </div>
-                        <p className={`${theme.textMuted}`}>No notifications</p>
-                      </div>
-                    ) : (
-                      notifications.map(notification => (
-                        <button
-                          key={notification.id}
-                          onClick={() => handleNotificationClick(notification)}
-                          className={`w-full p-4 border-b ${theme.cardBorder} ${theme.hoverBg} text-left transition ${
-                            !notification.isRead ? `${theme.accentBg}/5` : ""
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-medium text-sm ${theme.textPrimary}`}>{notification.title}</p>
-                              <p className={`text-sm ${theme.textSecondary} truncate mt-0.5`}>{notification.message}</p>
-                              <p className={`text-xs ${theme.textMuted} mt-1`}>
-                                {formatDistanceToNow(notification.createdAt)}
-                              </p>
-                            </div>
-                            {!notification.isRead && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1" />
-                            )}
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium text-sm ${theme.textPrimary}`}>{notification.title}</p>
+                            <p className={`text-sm ${theme.textSecondary} truncate mt-0.5`}>{notification.message}</p>
+                            <p className={`text-xs ${theme.textMuted} mt-1`}>
+                              {formatDistanceToNow(notification.createdAt)}
+                            </p>
                           </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
+                          {!notification.isRead && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1" />
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
-            {/* Other Nav Items */}
+          {/* Nav Items - Desktop Only (excluding notifications) */}
+          <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const IconComponent = getIcon(item.icon);
               const isActive = activeItem === item.id;
@@ -379,22 +378,25 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
           {/* Theme Toggle - Hide on small mobile */}
           <button
             onClick={toggleTheme}
-            className={`hidden sm:block relative p-2 rounded-full transition-all duration-300 ${isDarkMode
+            className={`hidden sm:block relative p-2 rounded-full transition-all duration-300 ${
+              isDarkMode
                 ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30"
                 : "bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200"
-              }`}
+            }`}
             title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             <div className="relative w-4 h-4">
               <Sun
                 size={16}
-                className={`absolute inset-0 transition-all duration-300 ${isDarkMode ? "opacity-0 rotate-90 scale-0" : "opacity-100 rotate-0 scale-100"
-                  }`}
+                className={`absolute inset-0 transition-all duration-300 ${
+                  isDarkMode ? "opacity-0 rotate-90 scale-0" : "opacity-100 rotate-0 scale-100"
+                }`}
               />
               <Moon
                 size={16}
-                className={`absolute inset-0 transition-all duration-300 ${isDarkMode ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-0"
-                  }`}
+                className={`absolute inset-0 transition-all duration-300 ${
+                  isDarkMode ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-0"
+                }`}
               />
             </div>
           </button>
@@ -566,6 +568,30 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
                   <span className="font-medium">Search</span>
                 </button>
 
+                {/* Notifications Button */}
+                <button
+                  onClick={() => {
+                    setShowNotifications(true);
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                >
+                  <div className="relative">
+                    <Bell size={20} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-medium">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-medium">Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full bg-red-500 text-white`}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
                 {/* Home Button */}
                 <button
                   onClick={() => {
@@ -577,6 +603,20 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
                   <Home size={20} />
                   <span className="font-medium">Home</span>
                 </button>
+
+                {/* My Reviews Button - Only for Trainers */}
+                {userType === USER_TYPES.TRAINER && (
+                  <button
+                    onClick={() => {
+                      navigate("/trainer/reviews");
+                      setShowMobileMenu(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                  >
+                    <Star size={20} />
+                    <span className="font-medium">My Reviews</span>
+                  </button>
+                )}
 
                 {/* Other Nav Items - Filter out Students and My Courses */}
                 {navItems

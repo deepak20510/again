@@ -4,6 +4,7 @@ import {
   getMyTrainerProfileService,
   updateTrainerProfileService,
   updateUserProfileService,
+  getTrainerReviewsService,
 } from "./trainer.services.js";
 
 export const createTrainerProfile = async (req, res, next) => {
@@ -114,6 +115,27 @@ export const searchTrainers = async (req, res, next) => {
       message: "Trainers fetched successfully",
       data: result.data,
       meta: result.meta,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getMyReviews = async (req, res, next) => {
+  try {
+    const { userId } = req.user;
+
+    const result = await getTrainerReviewsService(userId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Reviews fetched successfully",
+      data: result.reviews,
+      meta: {
+        averageRating: result.averageRating,
+        totalReviews: result.totalReviews,
+      },
     });
   } catch (error) {
     next(error);

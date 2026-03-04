@@ -19,71 +19,49 @@ const Reviews = () => {
 
   useEffect(() => {
     fetchReviews();
+    
+    // Listen for custom event when a new review is added
+    const handleNewReview = () => {
+      fetchReviews();
+    };
+    
+    window.addEventListener("reviewAdded", handleNewReview);
+    
+    return () => {
+      window.removeEventListener("reviewAdded", handleNewReview);
+    };
   }, []);
 
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call when reviews endpoint is available
-      // const response = await ApiService.getMyReviews();
-      // Mock data for now
-      const mockReviews = [
-        {
-          id: 1,
+      const response = await ApiService.getMyReviews();
+      
+      if (response?.success) {
+        // Transform the data to match the component's expected format
+        const transformedReviews = (response.data || []).map(review => ({
+          id: review.id,
           reviewer: {
-            firstName: "Deepak",
-            lastName: "Mahato",
-            avatar: "https://i.pravatar.cc/100?img=1",
+            firstName: review.user?.firstName || "Anonymous",
+            lastName: review.user?.lastName || "",
+            avatar: review.user?.profilePicture || review.user?.avatar || `https://ui-avatars.com/api/?name=${review.user?.firstName}+${review.user?.lastName}&background=random`,
           },
-          rating: 5,
-          comment: "Excellent trainer! The JavaScript course was comprehensive and easy to follow. Highly recommended!",
-          course: "Complete JavaScript Bootcamp",
-          createdAt: "2024-03-01",
-          helpful: 12,
-        },
-        {
-          id: 2,
-          reviewer: {
-            firstName: "Priya",
-            lastName: "Sharma",
-            avatar: "https://i.pravatar.cc/100?img=2",
-          },
-          rating: 5,
-          comment: "Amazing teaching style. Makes complex React concepts very simple to understand.",
-          course: "React JS - The Complete Guide",
-          createdAt: "2024-02-28",
-          helpful: 8,
-        },
-        {
-          id: 3,
-          reviewer: {
-            firstName: "Rahul",
-            lastName: "Kumar",
-            avatar: "https://i.pravatar.cc/100?img=3",
-          },
-          rating: 4,
-          comment: "Great course content. Would love to see more real-world projects.",
-          course: "Node.js Backend Development",
-          createdAt: "2024-02-25",
-          helpful: 5,
-        },
-        {
-          id: 4,
-          reviewer: {
-            firstName: "Sneha",
-            lastName: "Patel",
-            avatar: "https://i.pravatar.cc/100?img=4",
-          },
-          rating: 5,
-          comment: "Best investment for my career. Got a job within 2 months of completing the course!",
-          course: "Complete JavaScript Bootcamp",
-          createdAt: "2024-02-20",
-          helpful: 15,
-        },
-      ];
-      setReviews(mockReviews);
+          rating: review.rating,
+          comment: review.review || "",
+          post: review.post,
+          createdAt: review.createdAt,
+          helpful: 0, // This would need to be added to the backend if needed
+        }));
+        
+        setReviews(transformedReviews);
+      } else {
+        // Fallback to empty array if API fails
+        setReviews([]);
+      }
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
+      // Show empty state on error
+      setReviews([]);
     } finally {
       setLoading(false);
     }
@@ -200,7 +178,7 @@ const Reviews = () => {
                         {review.reviewer.firstName} {review.reviewer.lastName}
                       </h3>
                       <p className={`text-xs sm:text-sm ${theme.textMuted} truncate`}>
-                        Reviewed: {review.course}
+                        Reviewed your post
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">

@@ -306,7 +306,7 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
 
       const postData = {
         content: cleanedContent || " ",
-        type: imageUrl ? (isPdf ? "article" : "image") : "text",
+        type: imageUrl ? (isPdf ? "pdf" : "image") : "text",
       };
 
       if (imageUrl) {

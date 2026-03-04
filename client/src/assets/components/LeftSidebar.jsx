@@ -152,9 +152,7 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
           const handleClick = () => {
             // Navigate based on item id and user type
             if (userType === USER_TYPES.TRAINER) {
-              if (item.id === "my-courses") {
-                navigate("/trainer/courses");
-              } else if (item.id === "reviews") {
+              if (item.id === "reviews") {
                 navigate("/trainer/reviews");
               }
             } else if (userType === USER_TYPES.STUDENT) {
