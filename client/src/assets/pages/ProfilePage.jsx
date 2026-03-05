@@ -399,6 +399,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         experience: [],
         education: [],
         skills: [],
+        about: "",
         analytics: { views: 0, impressions: 0, appearances: 0 },
         activity: { followers: 0, posts: 0 },
       };
@@ -453,6 +454,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       })),
       programs: [], // Placeholder for institute programs
     };
+
+    console.log('Profile data skills:', profileData?.trainerProfile?.skills || profileData?.skills); // Debug log
+    console.log('Common data skills:', commonData.skills); // Debug log
 
     if (userType === USER_TYPES.TRAINER) {
       return {
@@ -513,16 +517,45 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
   // Handler to receive updated profile data from modal
   const handleSaveProfile = (updatedUser) => {
-    setProfileData((prev) => ({ ...prev, ...updatedUser }));
+    console.log('Received updated user data:', updatedUser); // Debug log
+    
+    setProfileData((prev) => {
+      // Create a clean merge that completely overrides headline and about separately
+      const merged = { 
+        ...prev, 
+        // Explicitly set all fields from updatedUser, overriding any old data
+        firstName: updatedUser.firstName || prev.firstName,
+        lastName: updatedUser.lastName || prev.lastName,
+        headline: updatedUser.headline, // Force override with new headline
+        location: updatedUser.location || prev.location,
+        profilePicture: updatedUser.profilePicture || prev.profilePicture,
+        avatar: updatedUser.avatar || prev.avatar,
+        coverImage: updatedUser.coverImage || prev.coverImage,
+        // Ensure trainerProfile is properly merged if it exists
+        trainerProfile: updatedUser.trainerProfile ? {
+          ...prev.trainerProfile,
+          ...updatedUser.trainerProfile
+        } : prev.trainerProfile,
+        // Ensure skills are properly updated from both sources
+        skills: updatedUser.skills || updatedUser.trainerProfile?.skills || prev.skills,
+        // Ensure experience is properly updated
+        experience: updatedUser.experience || prev.experience
+      };
+      
+      console.log('Merged profile data:', merged); // Debug log
+      return merged;
+    });
 
     // Dispatch event for sidebar sync
     window.dispatchEvent(
       new CustomEvent("profileUpdated", {
         detail: {
-          name: `${updatedUser.firstName} ${updatedUser.lastName || ""}`.trim(),
+          name: updatedUser.firstName 
+            ? `${updatedUser.firstName} ${updatedUser.lastName || ""}`.trim()
+            : updatedUser.name || "",
           headline: updatedUser.headline,
           location: updatedUser.location,
-          avatar: updatedUser.profilePicture,
+          avatar: updatedUser.profilePicture || updatedUser.avatar,
         },
       }),
     );
@@ -848,6 +881,12 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 )}
               </div>
               
+              {/* Headline - Display for all user types */}
+              <p className={`${theme.textSecondary} mt-1 text-sm sm:text-base leading-relaxed`}>
+                {console.log('Headline data:', data.headline)} {/* Debug log */}
+                {data.headline}
+              </p>
+              
               {/* Unique ID Badge - Show for Trainers and Institutions */}
               {(isTrainer || isInstitute) && data.uniqueId && (
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -869,10 +908,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   )}
                 </div>
               )}
-              
-              <p className={`${theme.textSecondary} mt-1 text-sm sm:text-base leading-relaxed`}>
-                {data.headline}
-              </p>
 
               {/* Stats - Location first, then Rating */}
               <div
@@ -1137,47 +1172,94 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               </div>
             )}
 
-            {/* Experience - Only for Trainer */}
-            {isTrainer && (data.experience || []).length > 0 && (
+            {/* Current Position - Only for Trainer */}
+            {isTrainer && (
               <div
                 className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
-                    Experience
+                    Current Position
                   </h2>
-                  <button
-                    className={`p-2 rounded-full ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
-                  >
-                    <Plus size={20} />
-                  </button>
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => setIsEditModalOpen(true)}
+                      className={`p-2 rounded-full ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
+                    >
+                      <Pencil size={18} />
+                    </button>
+                  )}
                 </div>
 
-                <div className="space-y-4">
-                  {(data.experience || []).map((exp, index) => (
-                    <div key={index} className="flex gap-3">
-                      <img
-                        src={exp.logo}
-                        alt={exp.company}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                      <div>
-                        <h3 className={`font-semibold ${theme.textPrimary}`}>
-                          {exp.title}
-                        </h3>
-                        <p className={`text-sm ${theme.textSecondary}`}>
-                          {exp.company}
-                        </p>
-                        <p className={`text-sm ${theme.textMuted}`}>
-                          {exp.years}
-                        </p>
-                        <p className={`text-xs ${theme.textMuted}`}>
-                          {exp.type} • {exp.duration}
-                        </p>
+                {(data.experience || []).length > 0 ? (
+                  <div className="space-y-4">
+                    {(data.experience || []).slice(0, 1).map((exp, index) => (
+                      <div key={index} className="flex gap-3">
+                        <img
+                          src={exp.logo}
+                          alt={exp.company}
+                          className="w-12 h-12 rounded-lg object-cover"
+                        />
+                        <div>
+                          <h3 className={`font-semibold ${theme.textPrimary}`}>
+                            {exp.title}
+                          </h3>
+                          <p className={`text-sm ${theme.textSecondary}`}>
+                            {exp.company}
+                          </p>
+                          <p className={`text-sm ${theme.textMuted}`}>
+                            {exp.years}
+                          </p>
+                          <p className={`text-xs ${theme.textMuted}`}>
+                            {exp.type} • {exp.duration}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                ) : (
+                  <p className={`text-sm ${theme.textMuted}`}>
+                    No current position added yet
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Skills - Only for Trainer */}
+            {isTrainer && (
+              <div
+                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
+                    Skills
+                  </h2>
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => setIsEditModalOpen(true)}
+                      className={`px-3 py-1.5 rounded-full border ${theme.cardBorder} ${theme.accentColor} font-medium text-sm hover:${theme.hoverBg} transition-all duration-300`}
+                    >
+                      {(data.skills || []).length > 0 ? 'Edit skills' : 'Add skills'}
+                    </button>
+                  )}
                 </div>
+
+                {(data.skills || []).length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(data.skills || []).map((skill, index) => (
+                      <span
+                        key={index}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium bg-emerald-500/10 text-emerald-500`}
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={`text-sm ${theme.textMuted}`}>
+                    No skills added yet
+                  </p>
+                )}
               </div>
             )}
 
@@ -1269,40 +1351,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               </div>
             )}
 
-            {/* Skills - Only for Trainer */}
-            {isTrainer && (data.skills || []).length > 0 && (
-              <div
-                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
-                    Skills
-                  </h2>
-                  <button
-                    className={`px-3 py-1.5 rounded-full border ${theme.cardBorder} ${theme.accentColor} font-medium text-sm hover:${theme.hoverBg} transition-all duration-300`}
-                  >
-                    Add skills
-                  </button>
-                </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {(data.skills || []).map((skill, index) => (
-                    <span
-                      key={index}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                        isStudent
-                          ? "bg-blue-500/10 text-blue-500"
-                          : isTrainer
-                            ? "bg-emerald-500/10 text-emerald-500"
-                            : "bg-purple-500/10 text-purple-500"
-                      }`}
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Interests - Only for Trainer */}
             {isTrainer && (
@@ -1550,7 +1599,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         userType={userType}
-        profileData={data}
+        profileData={profileData}
         onSave={handleSaveProfile}
       />
 

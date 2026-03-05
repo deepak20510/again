@@ -1,13 +1,32 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { X, Camera, Upload, User, Briefcase, MapPin, GraduationCap, Building2 } from "lucide-react";
 import ApiService from "../../services/api";
 
 export default function EditProfileModal({ isOpen, onClose, userType, profileData, onSave }) {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState(profileData);
-  const [profilePreview, setProfilePreview] = useState(profileData.avatar || null);
-  const [coverPreview, setCoverPreview] = useState(profileData.coverImage || null);
+  
+  // Helper function to get the display name
+  const getDisplayName = () => {
+    if (!profileData) return "";
+    return profileData.firstName
+      ? `${profileData.firstName} ${profileData.lastName || ""}`.trim()
+      : profileData.name || "";
+  };
+
+  const [formData, setFormData] = useState({
+    name: getDisplayName(),
+    headline: profileData?.headline || "",
+    location: profileData?.location || "",
+    about: profileData?.bio || "",
+    skills: profileData?.trainerProfile?.skills || profileData?.skills || [],
+    experience: profileData?.experience || [],
+    avatar: profileData?.profilePicture || profileData?.avatar || "",
+    coverImage: profileData?.coverImage || ""
+  });
+  
+  const [profilePreview, setProfilePreview] = useState(profileData?.profilePicture || profileData?.avatar || null);
+  const [coverPreview, setCoverPreview] = useState(profileData?.coverImage || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [profileFile, setProfileFile] = useState(null);
@@ -15,10 +34,43 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
   const profileInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
+  // Update form data when profileData changes
+  useEffect(() => {
+    if (profileData) {
+      setFormData({
+        name: getDisplayName(),
+        headline: profileData.headline || "", // Ensure headline is properly initialized
+        location: profileData.location || "",
+        skills: profileData.trainerProfile?.skills || profileData.skills || [],
+        experience: profileData.experience || [],
+        avatar: profileData.profilePicture || profileData.avatar || "",
+        coverImage: profileData.coverImage || ""
+      });
+      setProfilePreview(profileData.profilePicture || profileData.avatar || null);
+      setCoverPreview(profileData.coverImage || null);
+    }
+  }, [profileData]);
+
   if (!isOpen) return null;
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setError(null);
+  };
+
+  const handleExperienceChange = (index, field, value) => {
+    const updatedExperience = [...(formData.experience || [])];
+    if (!updatedExperience[index]) {
+      updatedExperience[index] = {};
+    }
+    updatedExperience[index] = { ...updatedExperience[index], [field]: value };
+    setFormData((prev) => ({ ...prev, experience: updatedExperience }));
+    setError(null);
+  };
+
+  const handleSkillsChange = (value) => {
+    const skillsArray = value.split(",").map((s) => s.trim()).filter(Boolean);
+    setFormData((prev) => ({ ...prev, skills: skillsArray }));
     setError(null);
   };
 
@@ -75,22 +127,61 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         lastName = parts.slice(1).join(" ");
       }
 
-      // Call API to save profile (using trainer endpoint for trainers)
+      console.log('Saving headline:', formData.headline); // Debug log
+      console.log('Current profileData headline:', profileData?.headline); // Debug log
+
+      // Prepare the update data with proper field mapping
       const updateData = {
-        ...formData,
         firstName,
         lastName,
+        headline: formData.headline,
+        location: formData.location,
         profilePicture: profilePictureUrl,
         coverImage: coverImageUrl,
         avatar: profilePictureUrl,
+        skills: formData.skills || [],
+        experience: formData.experience || []
       };
+
+      // For trainers, also include skills in trainerProfile
+      if (isTrainer) {
+        updateData.trainerProfile = {
+          skills: formData.skills || []
+        };
+      }
+
+      console.log('Sending update data:', updateData); // Debug log
 
       const response = isTrainer 
         ? await ApiService.updateTrainerProfile(updateData)
         : await ApiService.updateGeneralProfile(updateData);
 
+      console.log('Update response:', response); // Debug log
+
       if (response.success) {
-        onSave(response.data);
+        // Handle the response structure from trainer endpoint
+        const updatedData = response.data.user ? {
+          ...response.data.user,
+          trainerProfile: response.data.profile,
+          // Include the updated fields for immediate UI update
+          firstName,
+          lastName,
+          headline: formData.headline,
+          location: formData.location,
+          skills: formData.skills,
+          experience: formData.experience
+        } : {
+          ...response.data,
+          // Include the updated fields for immediate UI update
+          firstName,
+          lastName,
+          headline: formData.headline,
+          location: formData.location,
+          skills: formData.skills,
+          experience: formData.experience
+        };
+        
+        onSave(updatedData);
         onClose();
       } else {
         setError(response.message || "Failed to save profile");
@@ -307,13 +398,16 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
                 <input
                   type="text"
                   value={formData.experience?.[0]?.title || ""}
-                  onChange={(e) =>
-                    handleInputChange("experience", [
-                      { ...formData.experience?.[0], title: e.target.value },
-                    ])
-                  }
+                  onChange={(e) => handleExperienceChange(0, "title", e.target.value)}
                   className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} ${theme.inputPlaceholder} focus:border-blue-400 focus:outline-none transition-all duration-300 text-xs sm:text-base`}
                   placeholder="Job title"
+                />
+                <input
+                  type="text"
+                  value={formData.experience?.[0]?.company || ""}
+                  onChange={(e) => handleExperienceChange(0, "company", e.target.value)}
+                  className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} ${theme.inputPlaceholder} focus:border-blue-400 focus:outline-none transition-all duration-300 text-xs sm:text-base mt-2`}
+                  placeholder="Company name"
                 />
               </div>
             )}
@@ -359,32 +453,11 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
                 Skills (comma separated)
               </label>
               <textarea
-                value={formData.skills?.join(", ") || ""}
-                onChange={(e) =>
-                  handleInputChange(
-                    "skills",
-                    e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
-                  )
-                }
+                value={Array.isArray(formData.skills) ? formData.skills.join(", ") : ""}
+                onChange={(e) => handleSkillsChange(e.target.value)}
                 rows={3}
                 className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} ${theme.inputPlaceholder} focus:border-blue-400 focus:outline-none transition-all duration-300 resize-none text-xs sm:text-base`}
                 placeholder="React, JavaScript, Python, etc."
-              />
-            </div>
-
-            {/* About/Bio */}
-            <div>
-              <label
-                className={`block text-xs sm:text-sm font-medium ${theme.textSecondary} mb-2`}
-              >
-                About
-              </label>
-              <textarea
-                value={formData.about || ""}
-                onChange={(e) => handleInputChange("about", e.target.value)}
-                rows={4}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} ${theme.inputPlaceholder} focus:border-blue-400 focus:outline-none transition-all duration-300 resize-none text-xs sm:text-base`}
-                placeholder="Tell us about yourself..."
               />
             </div>
           </div>
