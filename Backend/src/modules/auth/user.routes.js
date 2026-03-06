@@ -185,6 +185,16 @@ router.put("/profile", authMiddleware(), async (req, res) => {
         res.json({ success: true, data: completeUser });
     } catch (error) {
         console.error("Profile update error:", error);
+        
+        // Handle specific Prisma errors
+        if (error.code === 'P2025') {
+            return res.status(404).json({ 
+                success: false, 
+                message: "User account not found. Please log out and create a new account.",
+                code: "USER_NOT_FOUND"
+            });
+        }
+        
         res.status(500).json({ success: false, message: error.message });
     }
 });

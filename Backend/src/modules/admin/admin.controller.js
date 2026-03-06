@@ -1,12 +1,269 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import prisma from "../../db.js";
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 4;
 
 /**
- * Get all users with filtering and pagination
- * GET /admin/users
+ * Admin Signup - Send OTP for verification
+ * POST /admin/signup
  */
+export const adminSignup = async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+
+    // Check if admin already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "An account with this email already exists",
+      });
+    }
+
+    // Store signup data temporarily (we'll create the user after OTP verification)
+    // For now, we'll use a simple approach - store in a temporary table or use session
+    // Let's create a temporary admin signup record
+    const normalizedEmail = email.toLowerCase().trim();
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    
+    // Generate OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const hashedOTP = await bcrypt.hash(otp, SALT_ROUNDS);
+    const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store temporary signup data in user table with unverified status
+    const tempUser = await prisma.user.create({
+      data: {
+        firstName,
+        lastName,
+        email: normalizedEmail,
+        username: `admin_temp_${Date.now()}`, // Temporary username
+        password: hashedPassword,
+        role: "ADMIN",
+        isVerified: false, // Will be set to true after OTP verification
+        isActive: false, // Will be set to true after OTP verification
+        resetPasswordOTP: hashedOTP,
+        resetPasswordOTPExpires: expiryTime,
+      },
+    });
+
+    // Send OTP email
+    try {
+      const { sendVerificationOTPEmail } = await import("../../services/email.service.js");
+      await sendVerificationOTPEmail(normalizedEmail, otp);
+    } catch (emailError) {
+      // If email fails, delete the temp user
+      await prisma.user.delete({ where: { id: tempUser.id } }).catch(() => {});
+      console.error("Failed to send admin signup OTP:", emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again.",
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Verification OTP sent to your email. Please verify to complete admin account creation.",
+      data: {
+        email: normalizedEmail,
+        requiresVerification: true,
+      },
+    });
+  } catch (error) {
+    console.error("Error in admin signup:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Verify Admin Signup OTP
+ * POST /admin/verify-signup-otp
+ */
+export const verifyAdminSignupOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find the temporary admin user
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isVerified: true,
+        isActive: true,
+        resetPasswordOTP: true,
+        resetPasswordOTPExpires: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin signup not found. Please start the signup process again.",
+      });
+    }
+
+    if (user.isVerified && user.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin account already verified and active.",
+      });
+    }
+
+    if (!user.resetPasswordOTP || !user.resetPasswordOTPExpires) {
+      return res.status(400).json({
+        success: false,
+        message: "No verification OTP found. Please request a new one.",
+      });
+    }
+
+    // Check if OTP expired
+    if (new Date() > user.resetPasswordOTPExpires) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please start the signup process again.",
+      });
+    }
+
+    // Verify OTP
+    const isValidOTP = await bcrypt.compare(otp, user.resetPasswordOTP);
+    if (!isValidOTP) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP. Please check and try again.",
+      });
+    }
+
+    // Activate the admin account
+    const activatedAdmin = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        isActive: true,
+        username: `admin_${Date.now()}`, // Set proper username
+        resetPasswordOTP: null,
+        resetPasswordOTPExpires: null,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    // Log the admin creation
+    await prisma.auditLog.create({
+      data: {
+        userId: activatedAdmin.id,
+        action: "ADMIN_SIGNUP_VERIFIED",
+        resource: "User",
+        details: {
+          adminEmail: activatedAdmin.email,
+          adminId: activatedAdmin.id,
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Admin account verified and activated successfully! You can now log in.",
+      data: activatedAdmin,
+    });
+  } catch (error) {
+    console.error("Error verifying admin signup OTP:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Resend Admin Signup OTP
+ * POST /admin/resend-signup-otp
+ */
+export const resendAdminSignupOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find the temporary admin user
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        isVerified: true,
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin signup not found. Please start the signup process again.",
+      });
+    }
+
+    if (user.isVerified && user.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin account already verified and active.",
+      });
+    }
+
+    // Generate new OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const hashedOTP = await bcrypt.hash(otp, SALT_ROUNDS);
+    const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update OTP in database
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordOTP: hashedOTP,
+        resetPasswordOTPExpires: expiryTime,
+      },
+    });
+
+    // Send OTP email
+    try {
+      const { sendVerificationOTPEmail } = await import("../../services/email.service.js");
+      await sendVerificationOTPEmail(normalizedEmail, otp);
+    } catch (emailError) {
+      console.error("Failed to resend admin signup OTP:", emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "New verification OTP sent to your email.",
+    });
+  } catch (error) {
+    console.error("Error resending admin signup OTP:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 export const getUsers = async (req, res) => {
   try {
     const { role, isVerified, isBanned, search, page = 1, limit = 20 } = req.query;

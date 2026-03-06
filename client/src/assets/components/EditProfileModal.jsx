@@ -217,8 +217,14 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
       }
 
     } catch (err) {
-      setError(err.message || "Failed to save profile. Please try again.");
       console.error("Profile save error:", err);
+      
+      // Handle specific user not found error
+      if (err.message && err.message.includes("User account not found")) {
+        setError("Your session has expired. Please log out and create a new account.");
+      } else {
+        setError(err.message || "Failed to save profile. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -590,6 +590,28 @@ class ApiService {
 
   /* ================= ADMIN PASSWORD RESET ================= */
 
+  // Admin Authentication
+  static async adminSignup(data) {
+    return this.request("/admin/signup", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async adminVerifySignupOTP(data) {
+    return this.request("/admin/verify-signup-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async adminResendSignupOTP(data) {
+    return this.request("/admin/resend-signup-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   static async adminForgotPassword(data) {
     return this.request("/admin/forgot-password", {
       method: "POST",

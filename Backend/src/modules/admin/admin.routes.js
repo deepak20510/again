@@ -11,6 +11,9 @@ import {
   transferAdmin,
   getVerificationRequests,
   reviewVerificationRequest,
+  adminSignup,
+  verifyAdminSignupOTP,
+  resendAdminSignupOTP,
 } from "./admin.controller.js";
 import {
   adminForgotPassword,
@@ -29,9 +32,33 @@ import {
   adminVerifyOTPSchema,
   adminResetPasswordSchema,
   transferAdminSchema,
+  adminSignupSchema,
+  adminVerifySignupOTPSchema,
+  adminResendSignupOTPSchema,
 } from "./admin.schema.js";
 
 const router = express.Router();
+
+/**
+ * @route   POST /api/v1/admin/signup
+ * @desc    Create new admin account
+ * @access  Public
+ */
+router.post("/signup", validate(adminSignupSchema), adminSignup);
+
+/**
+ * @route   POST /api/v1/admin/verify-signup-otp
+ * @desc    Verify admin signup OTP
+ * @access  Public
+ */
+router.post("/verify-signup-otp", validate(adminVerifySignupOTPSchema), verifyAdminSignupOTP);
+
+/**
+ * @route   POST /api/v1/admin/resend-signup-otp
+ * @desc    Resend admin signup OTP
+ * @access  Public
+ */
+router.post("/resend-signup-otp", validate(adminResendSignupOTPSchema), resendAdminSignupOTP);
 
 /**
  * @route   POST /api/v1/admin/forgot-password

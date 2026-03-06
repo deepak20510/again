@@ -39,80 +39,92 @@ export default function FooterSection() {
 
       {/* ================= FOOTER ================= */}
       <footer className="bg-gray-50 py-12 sm:py-16 border-t">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
-          {/* Brand Column */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-blue-600 text-white p-2 rounded-lg">
-                <GraduationCap size={20} />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-800">Tutroid</h3>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Main Footer Content - Three Columns (Always) */}
+          <div className="grid grid-cols-3 gap-4 sm:gap-8 lg:gap-12 mb-8 sm:mb-12">
+            
+            {/* Column 1: Platform */}
+            <div className="text-center">
+              <h4 className="font-bold mb-4 sm:mb-6 text-gray-800 text-sm sm:text-lg lg:text-xl">Platform</h4>
+              <ul className="space-y-2 sm:space-y-3 lg:space-y-4 text-gray-600 text-xs sm:text-sm lg:text-base">
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Browse Trainers
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Top Institutions
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Learning Resources
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Success Stories
+                </li>
+              </ul>
             </div>
 
-            <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
-              Empowering learning connections. The professional network
-              connecting trainers, institutions, and students worldwide.
-            </p>
+            {/* Column 2: Company */}
+            <div className="text-center">
+              <h4 className="font-bold mb-4 sm:mb-6 text-gray-800 text-sm sm:text-lg lg:text-xl">Company</h4>
+              <ul className="space-y-2 sm:space-y-3 lg:space-y-4 text-gray-600 text-xs sm:text-sm lg:text-base">
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  About Us
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Careers
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Blog
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Contact
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: Legal */}
+            <div className="text-center">
+              <h4 className="font-bold mb-4 sm:mb-6 text-gray-800 text-sm sm:text-lg lg:text-xl">Legal</h4>
+              <ul className="space-y-2 sm:space-y-3 lg:space-y-4 text-gray-600 text-xs sm:text-sm lg:text-base">
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Terms of Service
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Privacy Policy
+                </li>
+                <li className="hover:text-blue-600 transition-colors duration-300 cursor-pointer">
+                  Cookie Policy
+                </li>
+              </ul>
+            </div>
           </div>
 
-          {/* Platform */}
-          <div>
-            <h4 className="font-semibold mb-4 text-gray-800 text-sm sm:text-base">Platform</h4>
-            <ul className="space-y-2 sm:space-y-3 text-gray-600 text-xs sm:text-sm">
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Browse Trainers
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Top Institutions
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Learning Resources
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Success Stories
-              </li>
-            </ul>
-          </div>
+          {/* Brand Section */}
+          <div className="border-t pt-8 sm:pt-12">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+              {/* Logo and Description */}
+              <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-600 text-white p-3 rounded-xl shadow-lg">
+                    <GraduationCap size={24} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800">Tutroid</h3>
+                </div>
+                <p className="text-gray-600 text-sm sm:text-base text-center md:text-left max-w-md">
+                  Empowering learning connections. The professional network connecting trainers, institutions, and students worldwide.
+                </p>
+              </div>
 
-          {/* Company */}
-          <div>
-            <h4 className="font-semibold mb-4 text-gray-800 text-sm sm:text-base">Company</h4>
-            <ul className="space-y-2 sm:space-y-3 text-gray-600 text-xs sm:text-sm">
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                About Us
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Careers
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Blog
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Contact
-              </li>
-            </ul>
+              {/* Copyright */}
+              <div className="text-center md:text-right">
+                <p className="text-sm text-gray-500">
+                  © {new Date().getFullYear()} Tutroid. All rights reserved.
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Built with ❤️ for the learning community
+                </p>
+              </div>
+            </div>
           </div>
-
-          {/* Legal */}
-          <div>
-            <h4 className="font-semibold mb-4 text-gray-800 text-sm sm:text-base">Legal</h4>
-            <ul className="space-y-2 sm:space-y-3 text-gray-600 text-xs sm:text-sm">
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Terms of Service
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Privacy Policy
-              </li>
-              <li className="hover:text-blue-600 transition cursor-pointer">
-                Cookie Policy
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom Divider */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-12 pt-6 sm:pt-6 border-t text-center text-xs sm:text-sm text-gray-500">
-          © {new Date().getFullYear()} Tutroid. All rights reserved.
         </div>
       </footer>
     </>

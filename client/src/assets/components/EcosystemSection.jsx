@@ -1,7 +1,10 @@
 import React from "react";
 import { Users, Building2, GraduationCap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function EcosystemSection() {
+  const navigate = useNavigate();
+
   const cards = [
     {
       title: "Trainers",
@@ -100,6 +103,7 @@ export default function EcosystemSection() {
 
               {/* Button */}
               <button
+                onClick={() => navigate("/signup")}
                 className={`w-full py-2 sm:py-3 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base ${card.buttonStyle}`}
               >
                 {card.button}
