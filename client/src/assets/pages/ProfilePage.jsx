@@ -20,6 +20,7 @@ import {
   X,
   FileText,
   BookOpen,
+  Briefcase,
 } from "lucide-react";
 import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 
@@ -29,7 +30,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const { username } = useParams(); // Changed from id to username
   const location = useLocation();
   const { user: authUser, updateProfile } = useAuth();
-  const config = DASHBOARD_CONFIG[userType] || DASHBOARD_CONFIG[USER_TYPES.STUDENT];
+  const config =
+    DASHBOARD_CONFIG[userType] || DASHBOARD_CONFIG[USER_TYPES.STUDENT];
   const profile = config?.leftSidebar?.profile || { avatar: "", name: "User" };
 
   // State for edit modal, profiles and posts
@@ -70,17 +72,16 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
   // Determine if viewing own profile
   // Check both username and ID to handle cases where username might be null
-  const isOwnProfile = !username || 
-                       username === authUser?.username || 
-                       username === authUser?.id;
+  const isOwnProfile =
+    !username || username === authUser?.username || username === authUser?.id;
 
   const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       const response = await ApiService.getUserProfile(username); // username can be undefined for own profile
       if (response.success) {
-        console.log('Profile Data:', response.data); // Debug log
-        console.log('Is Verified:', response.data.isVerified); // Debug log
+        console.log("Profile Data:", response.data); // Debug log
+        console.log("Is Verified:", response.data.isVerified); // Debug log
         setProfileData(response.data);
         // Load analytics for this user
         loadAnalytics(response.data.id);
@@ -116,9 +117,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   useEffect(() => {
     // Only load verification status for own profile, if trainer/institution, and not already verified
     if (isOwnProfile && profileData) {
-      const isTrainerOrInstitution = profileData.role === "TRAINER" || profileData.role === "INSTITUTION";
+      const isTrainerOrInstitution =
+        profileData.role === "TRAINER" || profileData.role === "INSTITUTION";
       const isNotVerified = !profileData.isVerified;
-      
+
       if (isTrainerOrInstitution && isNotVerified) {
         loadVerificationStatus();
       } else if (isTrainerOrInstitution && profileData.isVerified) {
@@ -126,7 +128,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         setVerificationStatus({
           hasRequest: false,
           status: "ACCEPTED",
-          isVerified: true
+          isVerified: true,
         });
       }
     }
@@ -163,14 +165,14 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const loadVerificationStatus = async () => {
     try {
       // Add a timeout to fail faster
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 5000)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 5000),
       );
-      
+
       const apiPromise = ApiService.getVerificationStatus();
-      
+
       const response = await Promise.race([apiPromise, timeoutPromise]);
-      
+
       if (response.success) {
         setVerificationStatus(response.data);
       }
@@ -180,7 +182,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       setVerificationStatus({
         hasRequest: false,
         status: null,
-        isVerified: false
+        isVerified: false,
       });
     }
   };
@@ -190,7 +192,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       setLoadingVerification(true);
       const response = await ApiService.requestVerification();
       if (response.success) {
-        alert("Verification request submitted successfully! Please wait for admin approval.");
+        alert(
+          "Verification request submitted successfully! Please wait for admin approval.",
+        );
         loadVerificationStatus();
       }
     } catch (error) {
@@ -201,10 +205,12 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   };
 
   const handleCancelVerificationRequest = async () => {
-    if (!confirm("Are you sure you want to cancel your verification request?")) {
+    if (
+      !confirm("Are you sure you want to cancel your verification request?")
+    ) {
       return;
     }
-    
+
     try {
       setLoadingVerification(true);
       const response = await ApiService.cancelVerificationRequest();
@@ -271,7 +277,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 name: profileData?.firstName
                   ? `${profileData.firstName} ${profileData.lastName || ""}`.trim()
                   : "User",
-                profilePicture: profileData?.profilePicture || profileData?.avatar,
+                profilePicture:
+                  profileData?.profilePicture || profileData?.avatar,
                 role: profileData?.role,
               },
         }));
@@ -341,7 +348,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
   const handleHireInterest = async () => {
     if (!profileData?.id) return;
-    
+
     try {
       const response = await ApiService.expressHireInterest(profileData.id);
       if (response.success) {
@@ -361,12 +368,13 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     try {
       const profileUsername = profileData?.username || authUser?.username;
       const userRole = profileData?.role || authUser?.role;
-      const rolePath = userRole === 'INSTITUTION' ? 'institute' : userRole?.toLowerCase();
+      const rolePath =
+        userRole === "INSTITUTION" ? "institute" : userRole?.toLowerCase();
       const profileURL = `${window.location.origin}/${rolePath}/profile/${profileUsername}`;
-      
+
       await navigator.clipboard.writeText(profileURL);
       setUrlCopied(true);
-      
+
       // Reset copied state after 2 seconds
       setTimeout(() => {
         setUrlCopied(false);
@@ -377,11 +385,12 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       const textArea = document.createElement("textarea");
       const profileUsername = profileData?.username || authUser?.username;
       const userRole = profileData?.role || authUser?.role;
-      const rolePath = userRole === 'INSTITUTION' ? 'institute' : userRole?.toLowerCase();
+      const rolePath =
+        userRole === "INSTITUTION" ? "institute" : userRole?.toLowerCase();
       textArea.value = `${window.location.origin}/${rolePath}/profile/${profileUsername}`;
       document.body.appendChild(textArea);
       textArea.select();
-      document.execCommand('copy');
+      document.execCommand("copy");
       document.body.removeChild(textArea);
       setUrlCopied(true);
       setTimeout(() => setUrlCopied(false), 2000);
@@ -428,9 +437,16 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       coverImage: profileData.coverImage || null,
       skills: profileData.trainerProfile?.skills || profileData.skills || [],
       analytics: {
-        views: analytics?.overview?.profileViews || profileData.profileViews || 0,
-        impressions: analytics?.overview?.postImpressions || profileData.postImpressions || 0,
-        appearances: analytics?.overview?.searchAppearances || profileData.searchAppearances || 0,
+        views:
+          analytics?.overview?.profileViews || profileData.profileViews || 0,
+        impressions:
+          analytics?.overview?.postImpressions ||
+          profileData.postImpressions ||
+          0,
+        appearances:
+          analytics?.overview?.searchAppearances ||
+          profileData.searchAppearances ||
+          0,
       },
       activity: {
         followers: profileData.followersCount || 0,
@@ -455,8 +471,11 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       programs: [], // Placeholder for institute programs
     };
 
-    console.log('Profile data skills:', profileData?.trainerProfile?.skills || profileData?.skills); // Debug log
-    console.log('Common data skills:', commonData.skills); // Debug log
+    console.log(
+      "Profile data skills:",
+      profileData?.trainerProfile?.skills || profileData?.skills,
+    ); // Debug log
+    console.log("Common data skills:", commonData.skills); // Debug log
 
     if (userType === USER_TYPES.TRAINER) {
       return {
@@ -517,12 +536,12 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
   // Handler to receive updated profile data from modal
   const handleSaveProfile = (updatedUser) => {
-    console.log('Received updated user data:', updatedUser); // Debug log
-    
+    console.log("Received updated user data:", updatedUser); // Debug log
+
     setProfileData((prev) => {
       // Create a clean merge that completely overrides headline and about separately
-      const merged = { 
-        ...prev, 
+      const merged = {
+        ...prev,
         // Explicitly set all fields from updatedUser, overriding any old data
         firstName: updatedUser.firstName || prev.firstName,
         lastName: updatedUser.lastName || prev.lastName,
@@ -532,17 +551,22 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         avatar: updatedUser.avatar || prev.avatar,
         coverImage: updatedUser.coverImage || prev.coverImage,
         // Ensure trainerProfile is properly merged if it exists
-        trainerProfile: updatedUser.trainerProfile ? {
-          ...prev.trainerProfile,
-          ...updatedUser.trainerProfile
-        } : prev.trainerProfile,
+        trainerProfile: updatedUser.trainerProfile
+          ? {
+              ...prev.trainerProfile,
+              ...updatedUser.trainerProfile,
+            }
+          : prev.trainerProfile,
         // Ensure skills are properly updated from both sources
-        skills: updatedUser.skills || updatedUser.trainerProfile?.skills || prev.skills,
+        skills:
+          updatedUser.skills ||
+          updatedUser.trainerProfile?.skills ||
+          prev.skills,
         // Ensure experience is properly updated
-        experience: updatedUser.experience || prev.experience
+        experience: updatedUser.experience || prev.experience,
       };
-      
-      console.log('Merged profile data:', merged); // Debug log
+
+      console.log("Merged profile data:", merged); // Debug log
       return merged;
     });
 
@@ -550,7 +574,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     window.dispatchEvent(
       new CustomEvent("profileUpdated", {
         detail: {
-          name: updatedUser.firstName 
+          name: updatedUser.firstName
             ? `${updatedUser.firstName} ${updatedUser.lastName || ""}`.trim()
             : updatedUser.name || "",
           headline: updatedUser.headline,
@@ -603,12 +627,18 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
       // Upload image if selected
       if (selectedImage && imagePreview !== "pdf") {
-        const uploadResponse = await ApiService.uploadFile(selectedImage, "Post Image");
+        const uploadResponse = await ApiService.uploadFile(
+          selectedImage,
+          "Post Image",
+        );
         if (uploadResponse.success) {
           imageUrl = uploadResponse.data.url;
         }
       } else if (selectedImage && imagePreview === "pdf") {
-        const uploadResponse = await ApiService.uploadFile(selectedImage, "Post PDF");
+        const uploadResponse = await ApiService.uploadFile(
+          selectedImage,
+          "Post PDF",
+        );
         if (uploadResponse.success) {
           imageUrl = uploadResponse.data.url;
         }
@@ -627,7 +657,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         setSelectedImage(null);
         setImagePreview(null);
         setIsCreatePostModalOpen(false);
-        
+
         // Refresh posts
         loadPosts();
         setSaveSuccess(true);
@@ -678,18 +708,20 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             >
               <MoreHorizontal size={20} />
             </button>
-            
+
             {/* Dropdown Menu */}
             {showMoreMenu && (
               <>
                 {/* Backdrop to close menu */}
-                <div 
-                  className="fixed inset-0 z-40" 
+                <div
+                  className="fixed inset-0 z-40"
                   onClick={() => setShowMoreMenu(false)}
                 />
-                
+
                 {/* Menu */}
-                <div className={`absolute right-0 mt-2 w-56 ${theme.cardBg} rounded-lg shadow-xl border ${theme.cardBorder} py-2 z-50`}>
+                <div
+                  className={`absolute right-0 mt-2 w-56 ${theme.cardBg} rounded-lg shadow-xl border ${theme.cardBorder} py-2 z-50`}
+                >
                   <button
                     onClick={async () => {
                       await handleCopyProfileURL();
@@ -702,7 +734,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                       {urlCopied ? "✓ Profile URL Copied!" : "Share Profile"}
                     </span>
                   </button>
-                  
+
                   {!isOwnProfile && (
                     <>
                       <div className={`h-px ${theme.cardBorder} my-1`} />
@@ -713,10 +745,22 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                         }}
                         className={`w-full px-4 py-2.5 text-left flex items-center gap-3 text-red-500 ${theme.hoverBg} transition-colors`}
                       >
-                        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        <svg
+                          className="w-[18px] h-[18px]"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
                         </svg>
-                        <span className="text-sm font-medium">Report Profile</span>
+                        <span className="text-sm font-medium">
+                          Report Profile
+                        </span>
                       </button>
                     </>
                   )}
@@ -732,8 +776,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         <div className="max-w-5xl mx-auto mt-4 px-6">
           <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-emerald-500 text-sm flex items-center gap-2">
             <CheckCircle2 size={18} />
-            {hireInterestSent 
-              ? "Hire interest sent successfully! The trainer will be notified." 
+            {hireInterestSent
+              ? "Hire interest sent successfully! The trainer will be notified."
               : "Profile updated successfully!"}
           </div>
         </div>
@@ -798,34 +842,52 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                         <button
                           onClick={handleRequestVerification}
                           disabled={loadingVerification}
-                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold border-2 border-blue-500 text-blue-500 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold border-2 border-blue-500 text-blue-500 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <CheckCircle2 size={20} className="flex-shrink-0" />
-                          <span>{loadingVerification ? "Requesting..." : "Request Verification"}</span>
+                          <span>
+                            {loadingVerification
+                              ? "Requesting..."
+                              : "Request Verification"}
+                          </span>
                         </button>
                       ) : verificationStatus.status === "PENDING" ? (
                         <button
                           onClick={handleCancelVerificationRequest}
                           disabled={loadingVerification}
-                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-2 border-yellow-500/30 hover:bg-yellow-500/20 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-2 border-yellow-500/30 hover:bg-yellow-500/20 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
-                          <CheckCircle2 size={20} className="animate-pulse flex-shrink-0" />
-                          <span>{loadingVerification ? "Cancelling..." : "Verification Pending"}</span>
+                          <CheckCircle2
+                            size={20}
+                            className="animate-pulse flex-shrink-0"
+                          />
+                          <span>
+                            {loadingVerification
+                              ? "Cancelling..."
+                              : "Verification Pending"}
+                          </span>
                         </button>
                       ) : verificationStatus.status === "REJECTED" ? (
                         <button
                           onClick={handleRequestVerification}
                           disabled={loadingVerification}
-                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold border-2 border-red-500 text-red-500 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          title={verificationStatus.adminNote || "Previous request was rejected"}
+                          className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold border-2 border-red-500 text-red-500 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-300 shadow-sm hover:shadow-md ${loadingVerification ? "opacity-50 cursor-not-allowed" : ""}`}
+                          title={
+                            verificationStatus.adminNote ||
+                            "Previous request was rejected"
+                          }
                         >
                           <X size={20} className="flex-shrink-0" />
-                          <span>{loadingVerification ? "Requesting..." : "Request Again"}</span>
+                          <span>
+                            {loadingVerification
+                              ? "Requesting..."
+                              : "Request Again"}
+                          </span>
                         </button>
                       ) : null}
                     </>
                   )}
-                  
+
                   <button
                     onClick={() => setIsEditModalOpen(true)}
                     className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-base font-semibold bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg`}
@@ -842,8 +904,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                       onClick={handleHireInterest}
                       disabled={hireInterestSent}
                       className={`w-full px-6 py-3.5 rounded-full text-base font-semibold ${
-                        hireInterestSent 
-                          ? "bg-emerald-500 text-white cursor-not-allowed" 
+                        hireInterestSent
+                          ? "bg-emerald-500 text-white cursor-not-allowed"
                           : `${theme.accentBg} text-white hover:opacity-90`
                       } transition-all duration-300 shadow-md hover:shadow-lg`}
                     >
@@ -869,36 +931,47 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             {/* Info */}
             <div className="mt-4">
               <div className="flex items-center gap-2">
-                <h1 className={`text-xl sm:text-2xl md:text-3xl font-bold ${theme.textPrimary}`}>
+                <h1
+                  className={`text-xl sm:text-2xl md:text-3xl font-bold ${theme.textPrimary}`}
+                >
                   {data.name}
                 </h1>
                 {/* Show verified badge only if user is verified */}
                 {profileData?.isVerified && (
-                  <CheckCircle2 className="text-blue-500 w-5 h-5 sm:w-6 sm:h-6" title="Verified" />
+                  <CheckCircle2
+                    className="text-blue-500 w-5 h-5 sm:w-6 sm:h-6"
+                    title="Verified"
+                  />
                 )}
                 {isStudent && (
-                  <span className={`${theme.textMuted} text-xs sm:text-sm`}>(He/Him)</span>
+                  <span className={`${theme.textMuted} text-xs sm:text-sm`}>
+                    (He/Him)
+                  </span>
                 )}
               </div>
-              
+
               {/* Headline - Display for all user types */}
-              <p className={`${theme.textSecondary} mt-1 text-sm sm:text-base leading-relaxed`}>
-                {console.log('Headline data:', data.headline)} {/* Debug log */}
+              <p
+                className={`${theme.textSecondary} mt-1 text-sm sm:text-base leading-relaxed`}
+              >
+                {console.log("Headline data:", data.headline)} {/* Debug log */}
                 {data.headline}
               </p>
-              
+
               {/* Unique ID Badge - Show for Trainers and Institutions */}
               {(isTrainer || isInstitute) && data.uniqueId && (
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold border ${
-                    isTrainer 
-                      ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30' 
-                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold border ${
+                      isTrainer
+                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30"
+                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                    }`}
+                  >
                     <span className="text-[10px]">ID:</span>
                     {data.uniqueId}
                   </span>
-                  
+
                   {/* Verified Badge */}
                   {profileData?.isVerified && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30">
@@ -914,55 +987,39 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 className={`flex flex-wrap items-center gap-2 sm:gap-3 mt-3 text-xs sm:text-sm font-medium`}
               >
                 {/* Location - Always first and in blue */}
-                <span className={`flex items-center gap-1 ${theme.accentColor}`}>
+                <span
+                  className={`flex items-center gap-1 ${theme.accentColor}`}
+                >
                   <MapPin size={14} />
                   {data.location}
                 </span>
-                
+
                 {/* Rating - Next to location for trainers and institutions */}
                 {isTrainer && (
                   <>
                     <span className={theme.textMuted}>•</span>
-                    <span className={`flex items-center gap-1 ${theme.accentColor}`}>
+                    <span
+                      className={`flex items-center gap-1 ${theme.accentColor}`}
+                    >
                       <Star size={14} className="fill-current" />
-                      {data.rating > 0 ? data.rating.toFixed(1) : '0.0'} average rating
+                      {data.rating > 0 ? data.rating.toFixed(1) : "0.0"} average
+                      rating
                     </span>
                   </>
                 )}
-                
-                {isInstitute && (
-                  <>
-                    <span className={theme.textMuted}>•</span>
-                    <span className={`flex items-center gap-1 ${theme.accentColor}`}>
-                      <Star size={14} className="fill-current" />
-                      {data.rating > 0 ? data.rating.toFixed(1) : '0.0'} average rating
-                    </span>
-                    <span className={theme.textMuted}>•</span>
-                    <span className={theme.textMuted}>{data.founded} Founded</span>
-                    <span className={theme.textMuted}>•</span>
-                    <span className={theme.textMuted}>{data.employees} employees</span>
-                  </>
-                )}
-                
+
                 {/* Additional stats for students */}
                 {isStudent && (
                   <>
                     <span className={theme.textMuted}>•</span>
-                    <span className={theme.accentColor}>{data.connections} connections</span>
+                    <span className={theme.accentColor}>
+                      {data.connections} connections
+                    </span>
                   </>
                 )}
               </div>
 
-              {/* Additional Institution Stats */}
-              {isInstitute && (
-                <div
-                  className={`flex flex-wrap items-center gap-2 sm:gap-3 mt-2 text-xs sm:text-sm ${theme.textMuted}`}
-                >
-                  <span>{data.trainers} trainers</span>
-                  <span>•</span>
-                  <span>{data.students} students</span>
-                </div>
-              )}
+              {/* Additional Institution Stats - Removed */}
             </div>
           </div>
         </div>
@@ -1038,29 +1095,11 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   {/* Additional Analytics Details */}
                   {analytics && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className={`text-sm ${theme.textMuted}`}>
-                          <span className="font-medium">Connections:</span>{" "}
-                          <span className={theme.textPrimary}>
-                            {analytics.engagement?.connections || 0}
-                          </span>
-                        </div>
+                      <div className="grid grid-cols-1 gap-4">
                         <div className={`text-sm ${theme.textMuted}`}>
                           <span className="font-medium">Total Posts:</span>{" "}
                           <span className={theme.textPrimary}>
                             {analytics.content?.totalPosts || 0}
-                          </span>
-                        </div>
-                        <div className={`text-sm ${theme.textMuted}`}>
-                          <span className="font-medium">Average Rating:</span>{" "}
-                          <span className={theme.textPrimary}>
-                            {analytics.content?.averageRating?.toFixed(1) || "0.0"} ⭐
-                          </span>
-                        </div>
-                        <div className={`text-sm ${theme.textMuted}`}>
-                          <span className="font-medium">Growth:</span>{" "}
-                          <span className={`${analytics.overview?.growthPercentage >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                            {analytics.overview?.growthPercentage >= 0 ? '+' : ''}{analytics.overview?.growthPercentage || 0}%
                           </span>
                         </div>
                       </div>
@@ -1119,31 +1158,37 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 ) : (
                   <>
                     <div className="space-y-4">
-                      {(showAllPosts ? posts : posts.slice(0, 1)).map((post) => (
-                        <PostCard
-                          key={post.id}
-                          post={post}
-                          user={{ id: profileData?.id || authUser?.id }} // Pass the user ID
-                          isLiked={false}
-                          isSaved={false}
-                          showComments={false}
-                          commentInput=""
-                          onLike={() => console.log("Like post:", post.id)}
-                          onSave={() => console.log("Save post:", post.id)}
-                          onShare={() => console.log("Share post:", post.id)}
-                          onComment={() =>
-                            console.log("Comment on post:", post.id)
-                          }
-                          onSubmitComment={() => console.log("Submit comment")}
-                          onToggleComments={() => console.log("Toggle comments")}
-                          onDelete={handleDeletePost}
-                          onEdit={handleEditPost}
-                          isOwnProfile={isOwnProfile} // True if viewing own profile, false if viewing other trainer's profile
-                          onReviewUpdate={handleReviewUpdate}
-                        />
-                      ))}
+                      {(showAllPosts ? posts : posts.slice(0, 1)).map(
+                        (post) => (
+                          <PostCard
+                            key={post.id}
+                            post={post}
+                            user={{ id: profileData?.id || authUser?.id }} // Pass the user ID
+                            isLiked={false}
+                            isSaved={false}
+                            showComments={false}
+                            commentInput=""
+                            onLike={() => console.log("Like post:", post.id)}
+                            onSave={() => console.log("Save post:", post.id)}
+                            onShare={() => console.log("Share post:", post.id)}
+                            onComment={() =>
+                              console.log("Comment on post:", post.id)
+                            }
+                            onSubmitComment={() =>
+                              console.log("Submit comment")
+                            }
+                            onToggleComments={() =>
+                              console.log("Toggle comments")
+                            }
+                            onDelete={handleDeletePost}
+                            onEdit={handleEditPost}
+                            isOwnProfile={isOwnProfile} // True if viewing own profile, false if viewing other trainer's profile
+                            onReviewUpdate={handleReviewUpdate}
+                          />
+                        ),
+                      )}
                     </div>
-                    
+
                     {/* Show all posts button */}
                     {posts.length > 1 && (
                       <button
@@ -1153,15 +1198,35 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                         {showAllPosts ? (
                           <>
                             Show less
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 15l7-7 7 7"
+                              />
                             </svg>
                           </>
                         ) : (
                           <>
                             Show all {posts.length} posts
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
                             </svg>
                           </>
                         )}
@@ -1239,7 +1304,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                       onClick={() => setIsEditModalOpen(true)}
                       className={`px-3 py-1.5 rounded-full border ${theme.cardBorder} ${theme.accentColor} font-medium text-sm hover:${theme.hoverBg} transition-all duration-300`}
                     >
-                      {(data.skills || []).length > 0 ? 'Edit skills' : 'Add skills'}
+                      {(data.skills || []).length > 0
+                        ? "Edit skills"
+                        : "Add skills"}
                     </button>
                   )}
                 </div>
@@ -1271,34 +1338,19 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
                     Training Programs
                   </h2>
-                  <button
-                    className={`p-2 rounded-full ${theme.hoverBg} ${theme.hoverText} transition-all duration-300`}
-                  >
-                    <Plus size={20} />
-                  </button>
                 </div>
 
-                <div className="space-y-4">
-                  {(data.programs || []).map((prog, index) => (
-                    <div
-                      key={index}
-                      className={`p-3 rounded-lg ${theme.hoverBg} transition-all duration-300`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <h3 className={`font-semibold ${theme.textPrimary}`}>
-                          {prog.name}
-                        </h3>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-500`}
-                        >
-                          Active
-                        </span>
-                      </div>
-                      <p className={`text-sm ${theme.textMuted} mt-1`}>
-                        {prog.students} students enrolled • {prog.duration}
-                      </p>
-                    </div>
-                  ))}
+                {/* Coming Soon Message */}
+                <div className="py-12 text-center">
+                  <div className={`w-16 h-16 rounded-full ${theme.accentBg}/10 flex items-center justify-center mx-auto mb-4`}>
+                    <Briefcase className={`w-8 h-8 ${theme.accentColor}`} />
+                  </div>
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-2`}>
+                    Coming Soon
+                  </h3>
+                  <p className={`text-sm ${theme.textMuted} max-w-sm mx-auto`}>
+                    Training programs feature will be available soon. Stay tuned!
+                  </p>
                 </div>
               </div>
             )}
@@ -1350,40 +1402,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 </div>
               </div>
             )}
-
-
-
-            {/* Interests - Only for Trainer */}
-            {isTrainer && (
-              <div
-                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
-              >
-                <h2 className={`text-lg font-semibold ${theme.textPrimary} mb-4`}>
-                  Interests
-                </h2>
-                <div className="flex gap-3">
-                  <button
-                    className={`px-4 py-2 rounded-full text-sm font-medium bg-emerald-600 text-white`}
-                  >
-                    {isStudent
-                      ? "Top Voices"
-                      : isTrainer
-                        ? "Companies"
-                        : "Students"}
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300`}
-                  >
-                    Companies
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.textSecondary} ${theme.hoverBg} transition-all duration-300`}
-                  >
-                    Groups
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Sidebar */}
@@ -1397,13 +1415,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   Quick Actions
                 </h3>
                 <div className="space-y-2">
-                  <button
-                    onClick={() => navigate("/trainer/courses")}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.hoverBg} ${theme.textPrimary} hover:bg-blue-500/10 hover:text-blue-400 transition-all duration-300 font-medium`}
-                  >
-                    <BookOpen size={18} />
-                    My Courses
-                  </button>
                   <button
                     onClick={() => navigate("/trainer/reviews")}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.hoverBg} ${theme.textPrimary} hover:bg-blue-500/10 hover:text-blue-400 transition-all duration-300 font-medium`}
@@ -1435,33 +1446,49 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 ) : (
                   <>
                     <div className="space-y-4">
-                      {(showAllTrainers ? trainers : trainers.slice(0, 3)).map((trainer) => (
-                        <div key={trainer.id} className="flex items-start gap-3">
-                          <img
-                            src={trainer.user?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(trainer.user?.firstName || "T")}&background=random`}
-                            alt={trainer.user?.firstName || "Trainer"}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                          <div className="flex-1">
-                            <h4
-                              className={`font-medium text-sm ${theme.textPrimary}`}
-                            >
-                              {trainer.user?.firstName
-                                ? `${trainer.user.firstName} ${trainer.user.lastName || ""}`.trim()
-                                : "Trainer"}
-                            </h4>
-                            <p className={`text-xs ${theme.textMuted} mt-0.5`}>
-                              {trainer.bio || trainer.skills?.slice(0, 3).join(", ") || "Expert Trainer"}
-                            </p>
-                            <button
-                              onClick={() => navigate(`/trainer/profile/${trainer.user?.username || trainer.user?.id}`)}
-                              className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
-                            >
-                              View Profile
-                            </button>
+                      {(showAllTrainers ? trainers : trainers.slice(0, 3)).map(
+                        (trainer) => (
+                          <div
+                            key={trainer.id}
+                            className="flex items-start gap-3"
+                          >
+                            <img
+                              src={
+                                trainer.user?.profilePicture ||
+                                `https://ui-avatars.com/api/?name=${encodeURIComponent(trainer.user?.firstName || "T")}&background=random`
+                              }
+                              alt={trainer.user?.firstName || "Trainer"}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                            <div className="flex-1">
+                              <h4
+                                className={`font-medium text-sm ${theme.textPrimary}`}
+                              >
+                                {trainer.user?.firstName
+                                  ? `${trainer.user.firstName} ${trainer.user.lastName || ""}`.trim()
+                                  : "Trainer"}
+                              </h4>
+                              <p
+                                className={`text-xs ${theme.textMuted} mt-0.5`}
+                              >
+                                {trainer.bio ||
+                                  trainer.skills?.slice(0, 3).join(", ") ||
+                                  "Expert Trainer"}
+                              </p>
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/trainer/profile/${trainer.user?.username || trainer.user?.id}`,
+                                  )
+                                }
+                                className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
+                              >
+                                View Profile
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
 
                     {trainers.length > 3 && (
@@ -1469,7 +1496,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                         onClick={() => setShowAllTrainers(!showAllTrainers)}
                         className={`mt-4 text-sm ${theme.textMuted} hover:${theme.textPrimary} transition-colors duration-300 flex items-center gap-1`}
                       >
-                        {showAllTrainers ? "Show less" : `Show all ${trainers.length} trainers`} →
+                        {showAllTrainers
+                          ? "Show less"
+                          : `Show all ${trainers.length} trainers`}{" "}
+                        →
                       </button>
                     )}
                   </>
@@ -1497,10 +1527,19 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 ) : (
                   <>
                     <div className="space-y-4">
-                      {(showAllInstitutions ? institutions : institutions.slice(0, 3)).map((institution) => (
-                        <div key={institution.id} className="flex items-start gap-3">
+                      {(showAllInstitutions
+                        ? institutions
+                        : institutions.slice(0, 3)
+                      ).map((institution) => (
+                        <div
+                          key={institution.id}
+                          className="flex items-start gap-3"
+                        >
                           <img
-                            src={institution.user?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(institution.name || "I")}&background=random`}
+                            src={
+                              institution.user?.profilePicture ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(institution.name || "I")}&background=random`
+                            }
                             alt={institution.name || "Institution"}
                             className="w-12 h-12 rounded-lg object-cover"
                           />
@@ -1512,10 +1551,15 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                             </h4>
                             <p className={`text-xs ${theme.textMuted} mt-0.5`}>
                               {institution.location || "Location not set"}
-                              {institution._count?.requests > 0 && ` • ${institution._count.requests} hiring`}
+                              {institution._count?.requests > 0 &&
+                                ` • ${institution._count.requests} hiring`}
                             </p>
                             <button
-                              onClick={() => navigate(`/institute/profile/${institution.user?.username || institution.user?.id}`)}
+                              onClick={() =>
+                                navigate(
+                                  `/institute/profile/${institution.user?.username || institution.user?.id}`,
+                                )
+                              }
                               className={`mt-2 px-4 py-1.5 rounded-full text-sm font-medium border ${theme.cardBorder} ${theme.accentColor} hover:${theme.hoverBg} transition-all duration-300`}
                             >
                               View Profile
@@ -1527,10 +1571,15 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
 
                     {institutions.length > 3 && (
                       <button
-                        onClick={() => setShowAllInstitutions(!showAllInstitutions)}
+                        onClick={() =>
+                          setShowAllInstitutions(!showAllInstitutions)
+                        }
                         className={`mt-4 text-sm ${theme.textMuted} hover:${theme.textPrimary} transition-colors duration-300 flex items-center gap-1`}
                       >
-                        {showAllInstitutions ? "Show less" : `Show all ${institutions.length} institutes`} →
+                        {showAllInstitutions
+                          ? "Show less"
+                          : `Show all ${institutions.length} institutes`}{" "}
+                        →
                       </button>
                     )}
                   </>
@@ -1569,12 +1618,18 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                   <p
                     className={`text-sm ${theme.textMuted} mt-1 truncate max-w-45`}
                   >
-                    {window.location.origin}/{data.role === 'INSTITUTION' ? 'institute' : data.role?.toLowerCase()}/profile/{data.username || data.name.toLowerCase().replace(/\s+/g, "-")}
+                    {window.location.origin}/
+                    {data.role === "INSTITUTION"
+                      ? "institute"
+                      : data.role?.toLowerCase()}
+                    /profile/
+                    {data.username ||
+                      data.name.toLowerCase().replace(/\s+/g, "-")}
                   </p>
                 </div>
                 <button
                   onClick={handleCopyProfileURL}
-                  className={`p-2 rounded-full ${urlCopied ? 'bg-green-500 text-white' : `${theme.hoverBg} ${theme.hoverText}`} transition-all duration-300 relative group`}
+                  className={`p-2 rounded-full ${urlCopied ? "bg-green-500 text-white" : `${theme.hoverBg} ${theme.hoverText}`} transition-all duration-300 relative group`}
                   title={urlCopied ? "Copied!" : "Copy profile URL"}
                 >
                   {urlCopied ? (
@@ -1613,10 +1668,16 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       {/* Create Post Modal */}
       {isCreatePostModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-start pt-16 z-50 px-4">
-          <div className={`${theme.cardBg} w-full max-w-xl rounded-2xl shadow-2xl border ${theme.cardBorder} overflow-hidden`}>
+          <div
+            className={`${theme.cardBg} w-full max-w-xl rounded-2xl shadow-2xl border ${theme.cardBorder} overflow-hidden`}
+          >
             {/* Modal Header */}
-            <div className={`flex justify-between items-center px-5 py-4 border-b ${theme.cardBorder}`}>
-              <h3 className={`font-bold text-lg ${theme.textPrimary}`}>Create Post</h3>
+            <div
+              className={`flex justify-between items-center px-5 py-4 border-b ${theme.cardBorder}`}
+            >
+              <h3 className={`font-bold text-lg ${theme.textPrimary}`}>
+                Create Post
+              </h3>
               <button
                 onClick={closeCreatePostModal}
                 className={`p-2 rounded-full ${theme.hoverBg} ${theme.textMuted} hover:${theme.textPrimary} transition-colors`}
@@ -1629,14 +1690,18 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             <div className="flex items-center gap-3 px-5 py-3">
               <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
                 <span className="text-white font-bold text-sm">
-                  {(authUser?.firstName || authUser?.name || "U").charAt(0).toUpperCase()}
+                  {(authUser?.firstName || authUser?.name || "U")
+                    .charAt(0)
+                    .toUpperCase()}
                 </span>
               </div>
               <div>
                 <div className={`font-semibold text-sm ${theme.textPrimary}`}>
                   {authUser?.firstName || authUser?.name || "Anonymous User"}
                 </div>
-                <div className={`text-xs ${theme.textMuted}`}>Post to anyone • Public</div>
+                <div className={`text-xs ${theme.textMuted}`}>
+                  Post to anyone • Public
+                </div>
               </div>
             </div>
 
@@ -1654,15 +1719,24 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               {imagePreview && (
                 <div className="mt-3 relative">
                   {imagePreview === "pdf" && selectedImage ? (
-                    <div className={`flex items-center gap-3 p-4 ${theme.hoverBg} rounded-xl border ${theme.cardBorder}`}>
+                    <div
+                      className={`flex items-center gap-3 p-4 ${theme.hoverBg} rounded-xl border ${theme.cardBorder}`}
+                    >
                       <FileText className="w-10 h-10 text-red-500 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-sm ${theme.textPrimary} truncate`}>
+                        <p
+                          className={`font-medium text-sm ${theme.textPrimary} truncate`}
+                        >
                           {selectedImage.name}
                         </p>
-                        <p className={`text-xs ${theme.textMuted}`}>PDF document</p>
+                        <p className={`text-xs ${theme.textMuted}`}>
+                          PDF document
+                        </p>
                       </div>
-                      <button onClick={removeImage} className={`${theme.textMuted} hover:text-red-500 p-1`}>
+                      <button
+                        onClick={removeImage}
+                        className={`${theme.textMuted} hover:text-red-500 p-1`}
+                      >
                         <X size={18} />
                       </button>
                     </div>
@@ -1688,20 +1762,34 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             {/* Media Options */}
             <div className={`px-5 py-3 border-t ${theme.cardBorder}`}>
               <div className="flex items-center gap-2">
-                <label className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:text-blue-500 cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}>
+                <label
+                  className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:text-blue-500 cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}
+                >
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="hidden"
                   />
-                  <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    className="w-4 h-4 text-emerald-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                   Photo
                 </label>
 
-                <label className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:text-blue-500 cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}>
+                <label
+                  className={`flex items-center gap-2 text-xs font-medium ${theme.textSecondary} hover:text-blue-500 cursor-pointer transition-colors px-3 py-2 rounded-lg ${theme.hoverBg}`}
+                >
                   <input
                     type="file"
                     accept="application/pdf"
@@ -1715,12 +1803,20 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             </div>
 
             {/* Post Button */}
-            <div className={`flex justify-between items-center px-5 py-3 border-t ${theme.cardBorder}`}>
-              <span className={`text-xs ${postText.length > 650 ? "text-red-500" : theme.textMuted}`}>
+            <div
+              className={`flex justify-between items-center px-5 py-3 border-t ${theme.cardBorder}`}
+            >
+              <span
+                className={`text-xs ${postText.length > 650 ? "text-red-500" : theme.textMuted}`}
+              >
                 {postText.length}/700
               </span>
               <button
-                disabled={(!postText.trim() && !selectedImage) || postText.length > 700 || isSubmitting}
+                disabled={
+                  (!postText.trim() && !selectedImage) ||
+                  postText.length > 700 ||
+                  isSubmitting
+                }
                 onClick={handlePostSubmit}
                 className="bg-blue-600 text-white px-6 py-2 rounded-full disabled:bg-blue-400/50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors font-semibold text-sm"
               >
@@ -1729,7 +1825,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                     <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                     Posting...
                   </span>
-                ) : "Post"}
+                ) : (
+                  "Post"
+                )}
               </button>
             </div>
           </div>

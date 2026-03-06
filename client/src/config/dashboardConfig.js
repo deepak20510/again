@@ -48,12 +48,9 @@ export const DASHBOARD_CONFIG = {
       profile: {
         name: "John Trainer",
         role: "JavaScript Expert Trainer",
-        studentsCount: 250,
         avatar: "https://i.pravatar.cc/120",
       },
-      menuItems: [
-        { id: "reviews", label: "Reviews", icon: "Star" },
-      ],
+      menuItems: [{ id: "reviews", label: "Reviews", icon: "Star" }],
     },
     feedSection: {
       placeholder:
@@ -73,8 +70,6 @@ export const DASHBOARD_CONFIG = {
   institute: {
     navbar: {
       navItems: [
-        { id: "hire-trainers", label: "Hire Trainers", icon: "UserPlus" },
-        { id: "my-trainers", label: "My Trainers", icon: "Users" },
         { id: "messaging", label: "Messaging", icon: "MessageSquare" },
       ],
     },

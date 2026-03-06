@@ -740,42 +740,76 @@ function EditProfileModalLinkedIn({ isOpen, onClose, userType, profileData, onSa
   );
 
   // Skills section edit
-  const renderSkillsSection = () => (
-    <div className="space-y-4">
-      <div>
-        <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
-          Skills
-        </label>
-        <textarea
-          value={formData.skills?.join(", ") || ""}
-          onChange={(e) =>
-            handleInputChange(
-              "skills",
-              e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
-            )
-          }
-          rows={4}
-          className={`w-full px-4 py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} focus:border-blue-400 focus:outline-none transition-all resize-none`}
-          placeholder="React, JavaScript, Python, etc. (comma separated)"
-        />
-        <p className={`text-xs ${theme.textMuted} mt-2`}>
-          Separate skills with commas
-        </p>
-      </div>
-      {formData.skills && formData.skills.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {formData.skills.map((skill, index) => (
-            <span
-              key={index}
-              className={`px-3 py-1 rounded-full text-sm ${theme.accentBg}/10 ${theme.accentColor} border ${theme.cardBorder}`}
-            >
-              {skill}
-            </span>
-          ))}
+  const renderSkillsSection = () => {
+    const handleSkillsKeyDown = (e) => {
+      // Handle Enter, comma, or space to add skill
+      if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+        e.preventDefault();
+        const value = e.target.value.trim();
+        if (value && !formData.skills?.includes(value)) {
+          handleInputChange('skills', [...(formData.skills || []), value]);
+          e.target.value = '';
+        }
+      }
+    };
+
+    const removeSkill = (indexToRemove) => {
+      handleInputChange(
+        'skills',
+        formData.skills.filter((_, index) => index !== indexToRemove)
+      );
+    };
+
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
+            Skills (press Space, Comma, or Enter to add)
+          </label>
+          
+          {/* Skills Display */}
+          {formData.skills && formData.skills.length > 0 && (
+            <div className={`flex flex-wrap gap-2 mb-3 p-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg}`}>
+              {formData.skills.map((skill, index) => (
+                <span
+                  key={index}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${theme.accentBg}/20 ${theme.accentColor} border ${theme.cardBorder} font-medium transition-all duration-200 hover:${theme.accentBg}/30`}
+                >
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={() => removeSkill(index)}
+                    className="ml-1 hover:text-red-500 transition-colors"
+                    title="Remove skill"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Skills Input */}
+          <input
+            type="text"
+            onKeyDown={handleSkillsKeyDown}
+            onBlur={(e) => {
+              const value = e.target.value.trim();
+              if (value && !formData.skills?.includes(value)) {
+                handleInputChange('skills', [...(formData.skills || []), value]);
+                e.target.value = '';
+              }
+            }}
+            className={`w-full px-4 py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} focus:border-blue-400 focus:outline-none transition-all`}
+            placeholder="Type a skill and press Space, Comma, or Enter"
+          />
+          <p className={`text-xs ${theme.textMuted} mt-2`}>
+            Add skills by pressing Space, Comma (,), or Enter after each skill
+          </p>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <>

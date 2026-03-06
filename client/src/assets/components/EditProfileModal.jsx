@@ -69,9 +69,38 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
   };
 
   const handleSkillsChange = (value) => {
-    const skillsArray = value.split(",").map((s) => s.trim()).filter(Boolean);
+    // Split by both comma and space, then filter out empty strings
+    const skillsArray = value
+      .split(/[,\s]+/) // Split by comma or space (one or more)
+      .map((s) => s.trim())
+      .filter(Boolean);
     setFormData((prev) => ({ ...prev, skills: skillsArray }));
     setError(null);
+  };
+
+  const handleSkillsKeyDown = (e) => {
+    // Handle Enter, comma, or space to add skill
+    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+      e.preventDefault();
+      const value = e.target.value.trim();
+      if (value && !formData.skills?.includes(value)) {
+        // Append to existing skills instead of replacing
+        setFormData((prev) => ({
+          ...prev,
+          skills: [...(prev.skills || []), value]
+        }));
+        setError(null);
+        // Clear the input after adding
+        e.target.value = '';
+      }
+    }
+  };
+
+  const removeSkill = (indexToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      skills: prev.skills.filter((_, index) => index !== indexToRemove)
+    }));
   };
 
   const handleFileChange = (e, type) => {
@@ -450,15 +479,52 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
               <label
                 className={`block text-xs sm:text-sm font-medium ${theme.textSecondary} mb-2`}
               >
-                Skills (comma separated)
+                Skills (press Space, Comma, or Enter to add)
               </label>
-              <textarea
-                value={Array.isArray(formData.skills) ? formData.skills.join(", ") : ""}
-                onChange={(e) => handleSkillsChange(e.target.value)}
-                rows={3}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} ${theme.inputPlaceholder} focus:border-blue-400 focus:outline-none transition-all duration-300 resize-none text-xs sm:text-base`}
-                placeholder="React, JavaScript, Python, etc."
+              
+              {/* Skills Display */}
+              {formData.skills && formData.skills.length > 0 && (
+                <div className={`flex flex-wrap gap-2 mb-3 p-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg}`}>
+                  {formData.skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm ${theme.accentBg}/20 ${theme.accentColor} border ${theme.cardBorder} font-medium transition-all duration-200 hover:${theme.accentBg}/30`}
+                    >
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(index)}
+                        className="ml-1 hover:text-red-500 transition-colors"
+                        title="Remove skill"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Skills Input */}
+              <input
+                type="text"
+                onKeyDown={handleSkillsKeyDown}
+                onBlur={(e) => {
+                  const value = e.target.value.trim();
+                  if (value && !formData.skills?.includes(value)) {
+                    // Append to existing skills
+                    setFormData((prev) => ({
+                      ...prev,
+                      skills: [...(prev.skills || []), value]
+                    }));
+                    e.target.value = '';
+                  }
+                }}
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border ${theme.inputBorder} ${theme.inputBg} ${theme.inputText} ${theme.inputPlaceholder} focus:border-blue-400 focus:outline-none transition-all duration-300 text-xs sm:text-base`}
+                placeholder="Type a skill and press Space, Comma, or Enter"
               />
+              <p className={`text-xs ${theme.textMuted} mt-1.5`}>
+                Add skills by pressing Space, Comma (,), or Enter after each skill
+              </p>
             </div>
           </div>
         </div>

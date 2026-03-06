@@ -204,6 +204,10 @@ class ApiService {
     return this.request("/trainer/profile");
   }
 
+  static async getProfileSummary() {
+    return this.request("/users/profile-summary");
+  }
+
   static async getMyReviews() {
     return this.request("/trainer/reviews");
   }

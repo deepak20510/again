@@ -1,8 +1,12 @@
 import express from "express";
 import client from "../../db.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
+import { getProfileSummary } from "./profileSummary.controller.js";
 
 const router = express.Router();
+
+// Profile summary endpoint - must come before /profile/:identifier
+router.get("/profile-summary", authMiddleware(), getProfileSummary);
 
 router.get("/profile", authMiddleware(), async (req, res) => {
     try {
